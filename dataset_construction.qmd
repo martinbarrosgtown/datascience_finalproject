@@ -1,0 +1,481 @@
+---
+title: "Data Cleaning"
+author: Miguel Villa
+format: html
+editor: visual
+---
+
+# Generating and Cleaning Data Set
+
+Note: You won't find the split or anything like that here! This is just where we did all the merging and cleaning.
+
+This is basically Step 1 in our modelling pipeline
+
+## Load Relevant Libraries
+
+```{r}
+library(tidyverse)
+library(readxl)
+library(ipumsr)
+library(readr)
+library(janitor)
+library(tibble)
+
+```
+
+## Opening all relevant predictors
+
+```{r}
+## Opening Total Remittance Receipt Data
+remittances <- read_excel("remittances received.xlsx") ## this will have a different name once we have a directory
+
+remittances <- remittances |>
+  pivot_longer(
+    cols = `1975`:`2024`, 
+    names_to = "year",        
+    values_to = "value"          
+  ) |>
+  mutate(year = as.integer(year)) |>
+  filter(year >= 1994) |>
+  rename(remittances = value) |>
+  select(- `Indicator Name`)
+
+## Opening Remittance as percent of GDP Data
+remittances_gdp <- read_excel("remittances gdp.xlsx") 
+
+remittances_gdp <- remittances_gdp |>
+  pivot_longer(
+    cols = `1975`:`2024`, 
+    names_to = "year",        
+    values_to = "value"          
+  ) |>
+  mutate(year = as.integer(year)) |>
+  filter(year >= 1994) |>
+  rename(remittances_gdp = value) 
+
+## Opening GDP - Current USD Info
+gdp <- read_excel("gdp_currentusd.xlsx") 
+
+gdp <- gdp |>
+  pivot_longer(
+    cols = `1975`:`2024`, 
+    names_to = "year",        
+    values_to = "value"          
+  ) |>
+  mutate(year = as.integer(year)) |>
+  filter(year >= 1994) |>
+  rename(gdp = value) 
+
+## Opening Unemployment as % of total labor force
+unemployment <- read_csv("unemployment.csv")
+unemployment <- unemployment |>
+  pivot_longer(
+    cols = `1994`:`2024`, 
+    names_to = "year",        
+    values_to = "value"          
+  ) |>
+  mutate(year = as.integer(year)) |>
+  filter(year >= 1994) |>
+  rename(unemployment = value) 
+
+## GDP Per Capita 
+gdp_per <- read_csv("gdp_per.csv")
+gdp_per <- gdp_per |>
+  pivot_longer(
+    cols = `1994`:`2024`, 
+    names_to = "year",        
+    values_to = "value"          
+  ) |>
+  mutate(year = as.integer(year)) |>
+  filter(year >= 1994) |>
+  rename(gdp_per = value) 
+
+## Inflation as measured by the annual growth rate of the GDP implicit deflator.
+inflation <- read_csv("inflation.csv")
+inflation <- inflation |>
+  pivot_longer(
+    cols = `1994`:`2024`, 
+    names_to = "year",        
+    values_to = "value"          
+  ) |>
+  mutate(year = as.integer(year)) |>
+  filter(year >= 1994) |>
+  rename(inflation = value) 
+
+## vulnerable employment as % of total employment. 
+vulnerable_emp <- read_csv("vulnerable_emp.csv")
+vulnerable_emp <- vulnerable_emp |>
+  pivot_longer(
+    cols = `1994`:`2024`, 
+    names_to = "year",        
+    values_to = "value"          
+  ) |>
+  mutate(year = as.integer(year)) |>
+  filter(year >= 1994) |>
+  rename(vulnerable_emp = value) 
+
+## Maternal Mortality
+maternal_mortality <- read_csv("maternal_mortality.csv")
+maternal_mortality <- maternal_mortality |>
+  pivot_longer(
+    cols = `1994`:`2024`, 
+    names_to = "year",        
+    values_to = "value"          
+  ) |>
+  mutate(year = as.integer(year)) |>
+  filter(year >= 1994) |>
+  rename(maternal_mortality = value) 
+
+## Official exchange rate relative to United State Dollars from Local Currency Units. 
+exchange_rate <- read_csv("exchange_rate.csv")
+exchange_rate <- exchange_rate |>
+  pivot_longer(
+    cols = `1994`:`2024`, 
+    names_to = "year",        
+    values_to = "value"          
+  ) |>
+  mutate(year = as.integer(year)) |>
+  filter(year >= 1994) |>
+  rename(exchange_rate = value) 
+
+## Deportations or Removal Orders from Trac data
+deportations <- read_csv("deportations.csv")
+deportations <- deportations |>
+  pivot_longer(
+    cols = `1998`:`2025`, 
+    names_to = "year",        
+    values_to = "value"          
+  ) |>
+  mutate(year = as.integer(year)) |>
+  filter(year >= 1994) |>
+  rename(deportations = value, `Country Name` = Country) 
+
+## Percent of Population with access to internet
+internet <- read_csv("internet.csv")
+internet <- internet |>
+  pivot_longer(
+    cols = `1994`:`2024`, 
+    names_to = "year",        
+    values_to = "value"          
+  ) |>
+  mutate(year = as.integer(year)) |>
+  filter(year >= 1994) |>
+  rename(internet = value) 
+
+## Percent of Population earning less than $3 a day. Living in poverty
+poverty <- read_csv("poverty.csv")
+poverty <- poverty |>
+  pivot_longer(
+    cols = `1994`:`2024`, 
+    names_to = "year",        
+    values_to = "value"          
+  ) |>
+  mutate(year = as.integer(year)) |>
+  filter(year >= 1994) |>
+  rename(poverty = value) 
+
+## Distance between most populous city in the us and origin country
+dist_pop <- read_csv("dist_pop.csv")
+dist_pop <- dist_pop |>
+  pivot_longer(
+    cols = `1994`:`2024`, 
+    names_to = "year",        
+    values_to = "value"          
+  ) |>
+  mutate(year = as.integer(year)) |>
+  filter(year >= 1994) |>
+  rename(dist_pop = value) 
+
+## Distance between capital city in the us and origin country
+dist_cap <- read_csv("dist_cap.csv")
+dist_cap <- dist_cap |>
+  pivot_longer(
+    cols = `1994`:`2024`, 
+    names_to = "year",        
+    values_to = "value"          
+  ) |>
+  mutate(year = as.integer(year)) |>
+  filter(year >= 1994) |>
+  rename(dist_cap = value) 
+
+## Political terror as measured by the us department of state on a scale from 1 - 5 
+terror <- read_csv("terror.csv")
+terror <- terror |>
+  mutate(year = as.integer(Year), Year = NULL) |>
+rename(terror = `political_terror_scale (measured on a 5 point ordinal scale by US State Department)`)
+
+```
+
+## Adding in Migrant Stock Data.
+
+Note very small number of countries, might have to do ACS instead or just. I think ultimately we are going to have to create yearly api pulls of foreign born population by country going back to 1975. We can check out numbers against this.
+
+```{r}
+## Code to infix country names 
+bpl_lookup <- tribble(
+  ~BPL,   ~country,
+  9900,   "United States, n.s.",
+  10000,  "American Samoa",
+  10500,  "Guam",
+  10750,  "Northern Mariana Islands",
+  11000,  "Puerto Rico",
+  11500,  "U.S. Virgin Islands",
+  12090,  "U.S. outlying areas, n.s.",
+  15000,  "Canada",
+  16010,  "Bermuda",
+  19900,  "North America, n.s.",
+  20000,  "Mexico",
+  21010,  "Belize/British Honduras",
+  21020,  "Costa Rica",
+  21030,  "El Salvador",
+  21040,  "Guatemala",
+  21050,  "Honduras",
+  21060,  "Nicaragua",
+  21070,  "Panama",
+  21090,  "Central America, n.s.",
+  25000,  "Cuba",
+  26010,  "Dominican Republic",
+  26020,  "Haiti",
+  26030,  "Jamaica",
+  26043,  "Bahamas",
+  26044,  "Barbados",
+  26054,  "Dominica",
+  26055,  "Grenada",
+  26060,  "Trinidad and Tobago",
+  26065,  "Antigua and Barbuda",
+  26070,  "St. Kitts--Nevis",
+  26075,  "St. Lucia",
+  26080,  "St. Vincent and the Grenadines",
+  26091,  "Caribbean, n.s.",
+  30005,  "Argentina",
+  30010,  "Bolivia",
+  30015,  "Brazil",
+  30020,  "Chile",
+  30025,  "Colombia",
+  30030,  "Ecuador",
+  30040,  "Guyana/British Guiana",
+  30050,  "Peru",
+  30060,  "Uruguay",
+  30065,  "Venezuela",
+  30070,  "Paraguay",
+  30090,  "South America, n.s.",
+  31000,  "Americas, n.s.",
+  40000,  "Denmark",
+  40100,  "Finland",
+  40200,  "Iceland",
+  40400,  "Norway",
+  40500,  "Sweden",
+  41000,  "England",
+  41100,  "Scotland",
+  41200,  "Wales",
+  41300,  "United Kingdom, n.s.",
+  41400,  "Ireland",
+  41410,  "Northern Ireland",
+  42000,  "Belgium",
+  42100,  "France",
+  42500,  "Netherlands",
+  42600,  "Switzerland",
+  43300,  "Greece",
+  43400,  "Italy",
+  43600,  "Portugal",
+  43610,  "Azores",
+  43800,  "Spain",
+  45000,  "Austria",
+  45200,  "Czechoslovakia",
+  45212,  "Slovakia",
+  45213,  "Czech Republic",
+  45300,  "Germany",
+  45400,  "Hungary",
+  45500,  "Poland",
+  45600,  "Romania",
+  45650,  "Bulgaria",
+  45675,  "Albania",
+  45700,  "Yugoslavia",
+  45720,  "Bosnia and Herzegovina",
+  45730,  "Croatia",
+  45740,  "Macedonia",
+  45750,  "Serbia",
+  45760,  "Kosovo",
+  45770,  "Montenegro",
+  46100,  "Estonia",
+  46200,  "Latvia",
+  46300,  "Lithuania",
+  46500,  "Other USSR/Russia",
+  46530,  "Ukraine",
+  46535,  "Belarus",
+  46540,  "Moldova",
+  46590,  "USSR, n.s.",
+  49900,  "Europe, n.s.",
+  50000,  "China",
+  50010,  "Hong Kong",
+  50040,  "Taiwan",
+  50100,  "Japan",
+  50200,  "Korea",
+  50220,  "South Korea",
+  50300,  "Mongolia",
+  51100,  "Cambodia",
+  51200,  "Indonesia",
+  51300,  "Laos",
+  51400,  "Malaysia",
+  51500,  "Philippines",
+  51600,  "Singapore",
+  51700,  "Thailand",
+  51800,  "Vietnam",
+  52000,  "Afghanistan",
+  52100,  "India",
+  52110,  "Bangladesh",
+  52120,  "Bhutan",
+  52130,  "Burma",
+  52140,  "Pakistan",
+  52150,  "Sri Lanka",
+  52200,  "Nepal",
+  55100,  "Armenia",
+  55200,  "Azerbaijan",
+  55300,  "Georgia",
+  55400,  "Uzbekistan",
+  55500,  "Kazakhstan",
+  53000,  "Iran",
+  53200,  "Iraq",
+  53400,  "Israel",
+  53420,  "Palestine",
+  53500,  "Jordan",
+  53700,  "Lebanon",
+  54000,  "Saudi Arabia",
+  54100,  "Syria",
+  54200,  "Turkey",
+  54300,  "Cyprus",
+  54350,  "Kuwait",
+  54400,  "Yemen",
+  54500,  "United Arab Emirates",
+  54700,  "Middle East, n.s.",
+  59900,  "Asia, n.e.c./n.s.",
+  60012,  "Egypt/United Arab Rep.",
+  60014,  "Morocco",
+  60016,  "Algeria",
+  60018,  "Sudan",
+  60019,  "Libya",
+  60023,  "Ghana",
+  60031,  "Nigeria",
+  60032,  "Cameroon",
+  60033,  "Cape Verde",
+  60034,  "Liberia",
+  60035,  "Senegal",
+  60036,  "Sierra Leone",
+  60037,  "Guinea",
+  60038,  "Ivory Coast",
+  60039,  "Togo",
+  60040,  "Eritrea",
+  60044,  "Ethiopia",
+  60045,  "Kenya",
+  60050,  "Somalia",
+  60060,  "Tanzania",
+  60065,  "Uganda",
+  60070,  "Zimbabwe",
+  60094,  "South Africa",
+  60095,  "Zaire",
+  60096,  "Congo",
+  60097,  "Zambia",
+  60099,  "Africa, n.s./n.e.c.",
+  70010,  "Australia",
+  70020,  "New Zealand",
+  71021,  "Fiji",
+  71022,  "Tonga",
+  71023,  "Samoa",
+  71024,  "Marshall Islands",
+  72000,  "Micronesia",
+  96000,  "Other, n.e.c. and unknown",
+  99999,  "NIU"
+)
+```
+
+```{r}
+## Method 1: adding in Migrant Stock of the US by CPS yearly. Only started in 1994.
+ddi <- read_ipums_ddi("cps_00012.xml")
+cps <- read_ipums_micro(ddi)
+
+## Attach proper country names to their codes, and generate sums of country of origin for (foreign born) migrants. 
+cps <- cps |>
+  left_join(bpl_lookup, by = "BPL") 
+
+cps_stock <- cps |>
+  filter(NATIVITY %in% c(4,5), YEAR >= 1994, YEAR <= 2024) |>
+  group_by(YEAR, country) |>
+  summarise(stock = sum(ASECWT), .groups = "drop") |>
+  rename(`Country Name` = country,
+         year = YEAR)
+```
+
+## Duplicates
+
+```{r}
+## Make Sure we have only countries found in the remittances data, migrant stock data, and deportations. 
+# Restricting list to only those for whom we have remittances data or deportation data
+common_countries <- Reduce(intersect, list(
+  unique(remittances_gdp$`Country Name`),
+  unique(deportations$`Country Name`)))
+
+# More restrictive if we choose to go this route, it would be remittances, gdp, cps_stock (which seems to be dropping the most obs), and obs. Alternatively we can reduce it to only countries that appear on all datasets. Don't really think we have to.
+common_countriesx1 <- Reduce(intersect, list(
+  unique(remittances$`Country Name`),
+  unique(remittances_gdp$`Country Name`),
+  unique(gdp$`Country Name`),
+  unique(cps_stock$`Country Name`),
+  unique(deportations$`Country Name`)
+)) ## yields 50ish countries less. 
+
+
+# Apply only common countries specified prior to each data frame we are merging 
+remittances <- remittances |> filter(`Country Name` %in% common_countries)
+remittances_gdp <- remittances_gdp |> filter(`Country Name` %in% common_countries)
+gdp <- gdp |> filter(`Country Name` %in% common_countries)
+cps_stock <- cps_stock |> filter(`Country Name` %in% common_countries)
+unemployment <- unemployment |> filter(`Country Name` %in% common_countries)
+gdp_per <- gdp_per |> filter(`Country Name` %in% common_countries)
+inflation <- inflation |> filter(`Country Name` %in% common_countries)
+vulnerable_emp <- vulnerable_emp |> filter(`Country Name` %in% common_countries)
+maternal_mortality <- maternal_mortality |> filter(`Country Name` %in% common_countries)
+exchange_rate <- exchange_rate |> filter(`Country Name` %in% common_countries)
+deportations <- deportations |> filter(`Country Name` %in% common_countries)
+internet <- internet |> filter(`Country Name` %in% common_countries)
+poverty <- poverty |> filter(`Country Name` %in% common_countries)
+dist_pop <- dist_pop |> filter(`Country Name` %in% common_countries)
+dist_cap <- dist_cap |> filter(`Country Name` %in% common_countries)
+terror <- terror |> filter(`Country Name` %in% common_countries)
+
+```
+
+## Merging it all in
+
+```{r}
+# Base panel with remittances, remittances/GDP, and GDP
+panel <- remittances |>
+  left_join(remittances_gdp, by = c("Country Name", "year")) |>
+  left_join(gdp, by = c("Country Name", "year")) |>
+  select(-`Country Code.x`, -`Country Code.y`)
+
+# Add migrant stock data (starting at 1994)
+panel_cps <- panel |>
+  left_join(cps_stock, by = c("Country Name", "year")) |>
+  filter(year >= 1994)
+
+# Continue merging other macro and social indicators
+panel_full <- panel_cps |>
+  left_join(unemployment,      by = c("Country Name", "year")) |>
+  left_join(gdp_per,           by = c("Country Name", "year")) |>
+  left_join(inflation,         by = c("Country Name", "year")) |>
+  left_join(vulnerable_emp,    by = c("Country Name", "year")) |>
+  left_join(maternal_mortality,by = c("Country Name", "year")) |>
+  left_join(exchange_rate,     by = c("Country Name", "year")) |>
+  left_join(deportations,      by = c("Country Name", "year")) |>
+  left_join(internet,      by = c("Country Name", "year")) |>
+  left_join(poverty,      by = c("Country Name", "year")) |>
+  left_join(dist_pop,      by = c("Country Name", "year")) |>
+  left_join(dist_cap,      by = c("Country Name", "year")) |>
+  left_join(terror,      by = c("Country Name", "year")) 
+
+# For easier viewing
+panel_full <- panel_full |> 
+  arrange(year, `Country Name`)
+
+write.csv(panel_full, "remittances.csv", row.names = FALSE)
+```

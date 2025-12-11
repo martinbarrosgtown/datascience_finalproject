@@ -1,0 +1,29 @@
+---
+title: "remittances"
+format: html
+editor: visual
+---
+
+### Main Pipeline for EDA
+## Setting up the training and testing data (STEP 2)
+```{r}
+library(tidymodels)
+library(tidyverse)
+
+## Load in data
+remittances <- read_csv("remittances.csv")
+
+## Getting ready for data splits
+set.seed(20251211)
+
+## Initial Split
+remit_split <- initial_split(data = remittances, prop = 0.8)
+
+remit_train <- training(x = remit_split) 
+remit_test <- testing(x = remit_split)
+```
+
+## Exploratory Data Analysis (STEP 3)
+```{r}
+
+```
