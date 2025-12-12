@@ -1,0 +1,194 @@
+---
+title: "remittances"
+format: html
+editor: visual
+---
+
+### Main Pipeline for EDA
+
+## Setting up the training and testing data (STEP 2)
+
+```{r}
+library(tidymodels)
+library(tidyverse)
+
+## Load in data
+remittances <- read_csv("remittances.csv")
+
+## Getting ready for data splits
+set.seed(20251211)
+
+## Initial Split
+remit_split <- initial_split(data = remittances, prop = 0.8)
+
+remit_train <- training(x = remit_split) 
+remit_test <- testing(x = remit_split)
+```
+
+## Exploratory Data Analysis (STEP 3)
+
+```{r}
+# visualize the data distribution
+
+remit_train |>
+  select(remittances, remittances_gdp, gdp, stock, unemployment) |>
+  pivot_longer(everything()) |>
+  ggplot(aes(value)) +
+  geom_histogram(bins = 30) +
+  facet_wrap(~name, scales = "free") +
+  theme_minimal()
+
+#We need to log some of the variables due to their distribution
+```
+
+```{r}
+# convert into log
+
+remit_train <- remit_train |>
+  mutate(
+    log_gdp = log(gdp),
+    log_remittances = log(remittances),
+    log1p_remit_gdp = log1p(remittances_gdp),
+    log_stock = log(stock)
+  )
+
+# visualize log_gdp and log_remittances 
+ggplot(remit_train, aes(x = log_gdp, y = log_remittances)) +
+  geom_point(alpha = 0.3) +
+  geom_smooth(method = "lm") +
+  theme_minimal()
+
+#Comment: positive relationship between log_remittances and log_GDP
+
+# visualize log_gdp and log_stock 
+ggplot(remit_train, aes(log(stock), log(remittances))) +
+  geom_point(alpha = 0.3) +
+  geom_smooth(method = "lm", se = FALSE, color = "blue") +
+  labs(
+    x = "log(stock)",
+    y = "log(remittances)",
+    title = "Log-Log Relationship Between Migrant Stock and Remittances"
+  ) +
+  theme_minimal()
+
+#Comment: positive relationship between log_remittances and log_stock
+
+```
+
+```{r}
+
+ggplot(remit_train, aes(unemployment, remittances)) +
+  geom_point(alpha = 0.3) +
+  theme_minimal()
+
+#No clear relationship 
+
+ggplot(remit_train, aes(x = log_gdp, y = log_remittances)) +
+  geom_boxplot() +
+  scale_y_log10()
+
+#The boxplot of log(remittances) shows substantial variance in remittance inflows across countries and years, even after log-transformation.
+
+install.packages("naniar")
+library(naniar)
+vis_miss(remit_train)
+
+ggplot(remit_train, aes(year, log_remittances, group = `Country Name`)) +
+  geom_line(alpha = 0.1) +
+  scale_y_log10() +
+  theme_minimal()
+#Remittances have increased globally over the past 30 years. 
+
+#Remittances - Mexico
+remit_train |>
+  filter(`Country Name` == "Mexico") |>
+  ggplot(aes(year, log_remittances)) +
+  geom_line() +
+  scale_y_log10() +
+  theme_minimal()
+
+#Remittances - El Salvador
+remit_train |>
+  filter(`Country Name` == "El Salvador") |>
+  ggplot(aes(year, remittances)) +
+  geom_line() +
+  scale_y_log10() +
+  theme_minimal()
+
+#Remittances - Guatemala
+remit_train |>
+  filter(`Country Name` == "Guatemala") |>
+  ggplot(aes(year, remittances)) +
+  geom_line() +
+  scale_y_log10() +
+  theme_minimal()
+
+# Top 10 countries - Remittances as a % of the GDP
+remit_train |>
+  group_by(`Country Name`) |>
+  summarize(mean_ratio = mean(remittances_gdp, na.rm = TRUE)) |>
+  arrange(desc(mean_ratio)) |>
+  slice_head(n = 10)
+
+top10 <- remit_train |>
+  group_by(`Country Name`) |>
+  summarize(mean_ratio = mean(remittances_gdp, na.rm = TRUE)) |>
+  arrange(desc(mean_ratio)) |>
+  slice_head(n = 10)
+
+ggplot(top10, aes(x = reorder(`Country Name`, mean_ratio), y = mean_ratio)) +
+  geom_col() +
+  coord_flip() +
+  labs(
+    title = "Top 10 Countries by Average Remittances % of GDP",
+    x = "Country",
+    y = "Average Remittances/GDP"
+  ) +
+  theme_minimal()
+
+# Assessing deportations and remittances
+ggplot(remit_train, aes(deportations, remittances)) +
+  geom_point(alpha = 0.3) +
+  scale_y_log10() +
+  theme_minimal()
+
+ggplot(remit_train, aes(log1p(deportations), log(remittances))) +
+  geom_point(alpha = 0.3) +
+  theme_minimal() +
+  labs(
+    x = "log(deportations + 1)",
+    y = "log(remittances)",
+    title = "Log–Log Relationship Between Deportations and Remittances"
+  )
+
+#The plot shows that remittances increase with countries that are larger or have more migrants abroad, which logically correlates with having more recorded deportations. This does not imply that deportations increase remittances.
+
+
+
+```
+
+
+```{r}
+#Start assessing countries of interes
+countries_of_interest <- c("Mexico", "India", "Guatemala", "El Salvador")
+
+filtered <- remit_train |>
+  filter(`Country Name` %in% countries_of_interest)
+
+ggplot(filtered, aes(log(stock), log(remittances), color = `Country Name`)) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(
+    x = "log(stock)",
+    y = "log(remittances)",
+    title = "Stock–Remittance Relationship for Selected Countries"
+  ) +
+  theme_minimal()
+
+#Comment: comparing the stock–Remittance Relationship for Selected Countries
+
+
+
+
+
+```
