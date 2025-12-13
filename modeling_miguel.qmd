@@ -1,0 +1,205 @@
+---
+title: "modeling_miguel"
+format: html
+editor: visual
+---
+### Main Pipeline for EDA
+
+## Setting up the training and testing data (STEP 2)
+
+```{r}
+library(tidymodels)
+library(tidyverse)
+options(scipen = 999)
+
+
+## Load in data
+remittances <- read_csv("remittances.csv")
+
+## Getting ready for data splits
+set.seed(20251211)
+
+## Initial Split
+remit_split <- initial_split(data = remittances, prop = 0.8)
+
+remit_train <- training(x = remit_split) 
+remit_test <- testing(x = remit_split)
+```
+
+## Exploratory Data Analysis (STEP 3)
+
+General Remittance Exploration
+
+```{r}
+## Remittances
+remit_train |>
+  ggplot(aes(remittances)) + 
+  geom_histogram(bins = 40, na.rm = TRUE) +
+  theme_minimal()
+
+## Suggestions we have a right skew. Log Remittances
+remit_train |>
+  mutate(log_remittances = log(remittances)) |>
+  ggplot(aes(log_remittances)) + 
+  geom_histogram(bins = 40, na.rm = TRUE) +
+  theme_minimal()
+
+## Total Remittances over time
+remit_train |>
+  group_by(year) |>
+  summarise(total_remittances = sum(remittances, na.rm = TRUE)) |>
+  ggplot(aes(x = year, y = total_remittances)) + 
+  geom_area () +
+  theme_minimal()
+
+## Average Remittances over Time
+remit_train |>
+  group_by(year) |>
+  summarise(avg_remittances = mean(remittances, na.rm = TRUE)) |>
+  ggplot(aes(x = year, y = avg_remittances)) + 
+  geom_line () +
+  theme_minimal()
+
+## Ten Largest Remittances Receiving Countries
+remit_train |>
+  group_by(`Country Name`) |>
+  summarise(total_remittances = sum(remittances, na.rm = TRUE)) |>
+  arrange(desc(total_remittances)) |>
+  slice_head(n = 10) |>
+  ggplot(aes(x = reorder(`Country Name`, total_remittances),
+             y = total_remittances)) +
+  geom_col() +
+  coord_flip () +
+  theme_minimal()
+
+```
+
+Remittance as a percentage of GDP exploration
+
+```{r}
+## Remittance as GDP
+remit_train |>
+  ggplot(aes(remittances_gdp)) + 
+  geom_histogram(bins = 40, na.rm = TRUE) +
+  theme_minimal() +
+  labs(title = "Remittances as % of GDP")
+
+
+## Also suggests right skew
+remit_train |>
+  mutate(log_remittances_gdp = log(remittances_gdp)) |>
+  ggplot(aes(log_remittances_gdp)) + 
+  geom_histogram(bins = 40, na.rm = TRUE) +
+  theme_minimal() +
+  labs(title = "Logged Remittances as % of GDP")
+
+## Average remittances as percentage of GDP over time
+remit_train |>
+  group_by(year) |>
+  summarise(avg_remittances_gdp = mean(remittances_gdp, na.rm = TRUE)) |>
+  ggplot(aes(x = year, y = avg_remittances_gdp)) + 
+  geom_line () +
+  theme_minimal() +
+  labs(title = "Average Remittances as % of GDP")
+
+
+## Top ten most remitting countries over time 
+remit_train |>
+  group_by(`Country Name`) |>
+  summarise(mean_remittances = mean(remittances_gdp, na.rm = TRUE)) |>
+  arrange(desc(mean_remittances)) |>
+  slice_head(n = 10) |>
+  ggplot(aes(x = reorder(`Country Name`, mean_remittances),
+             y = mean_remittances)) +
+  geom_col() +
+  coord_flip () +
+  theme_minimal() +
+  labs(title = "Top Ten Countries with Highest Remittances as % of GDP")
+
+
+
+## Top ten most remitting countries in 2024. Demonstrating LATAM's increased need
+remit_train |>
+  group_by(`Country Name`) |>
+  filter(year == 2024) |>
+  summarise(mean_remittances = mean(remittances_gdp, na.rm = TRUE)) |>
+  arrange(desc(mean_remittances)) |>
+  slice_head(n = 10) |>
+  ggplot(aes(x = reorder(`Country Name`, mean_remittances),
+             y = mean_remittances)) +
+  geom_col() +
+  coord_flip () +
+  theme_minimal() +
+  labs(title = "Top Ten Countries with Highest Remittances as % of GDP in 2024")
+
+## Generally summary of all countries average value over time 
+# Country means of all numeric values
+between_df <- remit_train |>
+  group_by(`Country Code`) |>
+  summarize(across(where(is.numeric), mean, na.rm = TRUE))
+
+```
+
+Lagged Relationships
+
+```{r}
+## Lagged (1 year)
+remit_lag <- remit_train |>
+  mutate(year = as.numeric(year)) |>
+  arrange(`Country Code`, year) |>
+  group_by(`Country Code`) |>
+  mutate(
+    gdp_lag = lag(gdp_per),
+    exch_lag = lag(exchange_rate),
+    unemp_lag = lag(unemployment), 
+    terror_lag = lag(terror), 
+    deportations_lag = lag(deportations), 
+    stock_lag = lag(stock), 
+  ) |>
+  ungroup()
+
+### Lagged predictors relationship with remittances (gdp)
+
+## GDP
+# GDP per capita
+ggplot(remit_lag, aes(gdp_lag, remittances_gdp)) +
+  geom_point(alpha = 0.3, na.rm = TRUE) +
+  geom_smooth() # not much importance
+ggplot(remit_lag, aes(gdp_per, remittances_gdp)) +
+  geom_point(alpha = 0.3, na.rm = TRUE) +
+  geom_smooth()
+# GDP per capita logged
+remit_lag|>
+  mutate(log_remittances_gdp = log(remittances_gdp)) |>
+  ggplot(aes(gdp_lag, log_remittances_gdp)) +
+    geom_point(alpha = 0.3, na.rm = TRUE) +
+    geom_smooth() + 
+    theme_minimal() # very interesting, much stronger
+
+## Deportations
+# Deportations no lag
+ggplot(remit_train, aes(deportations, remittances_gdp)) +
+  geom_point(alpha = 0.3, na.rm = TRUE) +
+  geom_smooth() # expected negative relationship
+# Deportations lag
+ggplot(remit_lag, aes(deportations_lag, remittances_gdp)) +
+  geom_point(alpha = 0.3, na.rm = TRUE) +
+  geom_smooth() # expected more negative relationship suggestions of quadratic or log
+# log deportations with lag
+remit_lag|>
+  mutate(log_remittances_gdp = log(remittances_gdp)) |>
+  ggplot(aes(deportations_lag, log_remittances_gdp)) +
+    geom_point(alpha = 0.3, na.rm = TRUE) +
+    geom_smooth() + 
+    theme_minimal()
+```
+
+Shocks
+
+```{r}
+## Inflation
+ggplot(remit_train, aes(year, inflation, group = `Country Code`)) +
+  geom_line(alpha = 0.3) +
+  geom_hline(yintercept = 50, color = "red", linetype = "dashed") +
+  labs(title = "Inflation Shocks (50% threshold)")
+```
