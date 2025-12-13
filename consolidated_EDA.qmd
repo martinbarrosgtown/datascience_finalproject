@@ -1022,3 +1022,10 @@ Less Strong change and thus probably doesn't warrant inclusion.
 -   For the other predictors, including changes to migrant stock, terror, and unemployment the relationships for our key variables barely changed indicating no changes in explanatory power.
 
 -   **Next Steps:** using `step_mutate` in our recipe to add lags to our `gdp_per` and `deportations` would account for this.
+
+```{r}
+## Workflow plan for our recipes
+step_mutate(
+    gdp_lag = lag(gdp_per),
+    unemp_lag = lag(unemployment))
+```
