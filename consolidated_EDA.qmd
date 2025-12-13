@@ -152,7 +152,6 @@ summary(remit_train$remittances)
 
 The mean (\$2.55 billion) is much larger than the median (\$529 million). The data is **right-skewed**.
 
-
 ### Check overall data distribution
 
 ```{r fig.width=10, fig.height=5}
@@ -481,7 +480,6 @@ remit_train |>
 
 The relationship between log GDP and log remittances is **more linear** than the original variables, which will improve model performance.
 
-
 ## Assessing deportations and remittances
 
 ```{r fig.width=10, fig.height=6}
@@ -497,9 +495,8 @@ ggplot(remit_train, aes(x = deportations + 1, y = remittances + 1)) +
   ) +
   theme_minimal()
 ```
-- On a log–log scale, deportations and remittances show a  positive but noisy association, 
-suggesting remittances tend to rise with deportations. 
-------------------------------------------------------------------------
+
+-   On a log–log scale, deportations and remittances show a positive but noisy association, suggesting remittances tend to rise with deportations. ------------------------------------------------------------------------
 
 # STEP 5: Categorical Variables Analysis
 
@@ -540,6 +537,7 @@ remit_train |>
 Countries are fairly evenly represented. Bahrain has the most observations (30), while several countries have around 20-29 observations.
 
 ## Create Bar Chart of Top 15 by total remittances (2024) & Top 15 by remittances/GDP (2024)
+
 ```{r}
 
 remit_train %>%
@@ -752,7 +750,6 @@ remit_train |>
 -   **Red squares** = negative correlation (one increases, other decreases)
 -   **Darker colors** = stronger correlation
 
-
 ```{r}
 ## Create visual correlation matrix (Gaby's example)
 library(reshape2)
@@ -786,11 +783,9 @@ ggplot(melted_cor_log, aes(Var1, Var2, fill = value)) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 ```
-- Remittances are most strongly positively correlated with the stock of migrants (0.49),
-suggesting migrant presence is a key driver, while other macro variables show only weak associations.
-- Remittances as % of GDP are negatively correlated with GDP per capita ( −0.48), 
-indicating remittances matter more (relative to GDP) in poorer countries.
-------------------------------------------------------------------------
+
+-   Remittances are most strongly positively correlated with the stock of migrants (0.49), suggesting migrant presence is a key driver, while other macro variables show only weak associations.
+-   Remittances as % of GDP are negatively correlated with GDP per capita ( −0.48), indicating remittances matter more (relative to GDP) in poorer countries. ------------------------------------------------------------------------
 
 # STEP 7: Time Trends Analysis
 
@@ -837,3 +832,193 @@ remit_train |>
 Remittances as a percentage of GDP have stayed relatively **stable around 3-4%** over time. This means remittances are growing roughly in line with GDP growth, not becoming more or less important to economies over time.
 
 ------------------------------------------------------------------------
+
+# Step 8: Exploring lagged effects
+
+It is likely that past changes to country of origin conditions is likely to be more illustrative of future remittances than current conditions. For example, while a downward shock in GDP may influence current migration, migrants may take time to settle into the US and thus begin remitting back home.
+
+These lagged effect would seem to be the most plausible with GDP, unemployment, terror, deportations, and changes in migrant stock (inward migration)
+
+```{r}
+## Lagged (1 year)
+remit_lag <- remit_train |>
+  mutate(year = as.numeric(year)) |>
+  arrange(country_name, year) |>
+  group_by(country_name) |>
+  mutate(
+    gdp_lag = lag(gdp_per),
+    unemp_lag = lag(unemployment), 
+    terror_lag = lag(terror), 
+    deportations_lag = lag(deportations), 
+    stock_lag = lag(stock), 
+  ) |>
+  ungroup()
+# Verifying that the lag worked. 
+remit_lag |>
+  select(country_name, year, gdp_per, gdp_lag) |>
+  arrange(country_name, year) |>
+  filter(!is.na(gdp_lag)) |>
+  slice_head(n = 10)
+```
+
+## Lagged GDP per Capita
+
+```{r message=FALSE, warning=FALSE}
+## Lagged predictors relationship with remittances (as % of GDP)
+
+## GDP per capita
+# Lagged vs Unlagged
+remit_lag |>
+  pivot_longer(cols = c(gdp_per, gdp_lag),
+               names_to = "type",
+               values_to = "value") |>
+  ggplot(aes(value, remittances_gdp, color = type)) +
+  geom_point(alpha = 0.3) +
+  geom_smooth(se = FALSE) +
+  theme_minimal() +
+  labs(title = "Lagged vs Current GDP per Capita",
+       x = "GDP per capita",
+       color = "Variable") ## Doesn't Necessarily Improve Model Fit. 
+```
+
+Overall there seem to be better ways to verify whether lagged variable would improve the interpretability of our models.
+
+```{r message=FALSE, warning=FALSE}
+## Comparing Lagged vs Current GDP per capita for key countries. 
+remit_lag |>
+  filter(country_name %in% c("Nicaragua", "El Salvador", "Honduras",
+                             "Guatemala", "Haiti", "India")) |>
+  pivot_longer(
+    cols = c(gdp_per, gdp_lag),
+    names_to = "gdp_type",
+    values_to = "gdp_value"
+  ) |>
+  ggplot(aes(x = gdp_value, y = remittances_gdp,
+             color = country_name, linetype = gdp_type)) +
+  geom_point(alpha = 0.4) +
+  geom_smooth(method = "lm", se = FALSE) +
+  theme_minimal() +
+  labs(
+    title = "Lagged vs Current GDP per Capita",
+    x = "GDP per capita (current or lagged)",
+    linetype = "GDP variable"
+  )
+
+```
+
+Suggestion is that Lagged GDP demonstrates a slightly stronger relationship and thus may improve model fit. Thus it may seem that shocks or changes to prior GDP could help explain current remittances amounts.
+
+## Lagged Unemployment
+
+```{r message=FALSE, warning=FALSE}
+## Comparing Lagged vs Current Unemployment for key countries. 
+remit_lag |>
+  filter(country_name %in% c("Nicaragua", "El Salvador", "Honduras",
+                             "Guatemala", "Haiti", "India")) |>
+  pivot_longer(
+    cols = c(unemployment, unemp_lag),
+    names_to = "unemp_type",
+    values_to = "unemp_value"
+  ) |>
+  ggplot(aes(x = unemp_value, y = remittances_gdp,
+             color = country_name, linetype = unemp_type)) +
+  geom_point(alpha = 0.4) +
+  geom_smooth(method = "lm", se = FALSE) +
+  theme_minimal() +
+  labs(
+    title = "Lagged vs Current Unemployment",
+    x = "Unemployment (current or lagged)",
+    linetype = "GDP variable"
+  )
+
+```
+
+For most countries lagged unemployment does not seem to alter model fit substantially for any country other than Haiti.
+
+It likely won't improve our model fit and thus shouldn't be included.
+
+## Lagged Changes in Terror Level
+
+```{r message=FALSE, warning=FALSE}
+## Comparing Lagged vs Current Terror for key countries. 
+remit_lag |>
+  filter(country_name %in% c("Nicaragua", "El Salvador", "Honduras",
+                             "Guatemala", "Haiti", "India")) |>
+  pivot_longer(
+    cols = c(terror, terror_lag),
+    names_to = "terror_type",
+    values_to = "terror_value"
+  ) |>
+  ggplot(aes(x = terror_value, y = remittances_gdp,
+             color = country_name, linetype = terror_type)) +
+  geom_point(alpha = 0.4) +
+  geom_smooth(method = "lm", se = FALSE) +
+  theme_minimal() +
+  labs(
+    title = "Lagged vs Current Terror",
+    x = "Terror (current or lagged)",
+    linetype = "Terror variable"
+  )
+
+```
+
+It seems terror varies less, and lagged terror levels may not be too explanatory
+
+## Lagged Changes in Deportations
+
+```{r message=FALSE, warning=FALSE}
+## Comparing Lagged vs Current Deportations for key countries. 
+remit_lag |>
+  filter(country_name %in% c("Nicaragua", "El Salvador", "Honduras",
+                             "Guatemala", "Haiti", "India")) |>
+  pivot_longer(
+    cols = c(deportations, deportations_lag),
+    names_to = "deportations_type",
+    values_to = "deportations_value"
+  ) |>
+  ggplot(aes(x = deportations_value, y = remittances_gdp,
+             color = country_name, linetype = deportations_type)) +
+  geom_point(alpha = 0.4) +
+  geom_smooth(method = "lm", se = FALSE) +
+  theme_minimal() +
+  labs(
+    title = "Lagged vs Current Deportations",
+    x = "Deportations (current or lagged)",
+    linetype = "Deportations variable"
+  )
+
+```
+
+Much stronger relationship for key countries in including the lagged effects of deportations in explaining future remittances.
+
+```{r message=FALSE, warning=FALSE}
+## Comparing Lagged vs Current Deportations for key countries. 
+remit_lag |>
+  filter(country_name %in% c("Nicaragua", "El Salvador", "Honduras",
+                             "Guatemala", "Haiti", "India")) |>
+  pivot_longer(
+    cols = c(stock, stock_lag),
+    names_to = "stock_type",
+    values_to = "stock_value"
+  ) |>
+  ggplot(aes(x = stock_value, y = remittances_gdp,
+             color = country_name, linetype = stock_type)) +
+  geom_point(alpha = 0.4) +
+  geom_smooth(method = "lm", se = FALSE) +
+  theme_minimal() +
+  labs(
+    title = "Lagged vs Current Changes in Migrant Stock ",
+    x = "Migrant Stock (current or lagged)",
+    linetype = "Migrant Stock variable"
+  )
+```
+
+Less Strong change and thus probably doesn't warrant inclusion.
+
+**Takeaways:**
+
+-   Predictive power of lagged deportations and GDP improve model fit the best (shift the slopes of our relationships) most.
+
+-   For the other predictors, including changes to migrant stock, terror, and unemployment the relationships for our key variables barely changed indicating no changes in explanatory power.
+
+-   **Next Steps:** using `step_mutate` in our recipe to add lags to our `gdp_per` and `deportations` would account for this.
