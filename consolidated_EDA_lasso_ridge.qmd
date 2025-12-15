@@ -1206,6 +1206,7 @@ The LASSO model selected a set of nine predictors. Remittance intensity is negat
 We use this model a regularizaiton model, to reduce variance error by reducing the important of less important predictors. It is a bagging algorithm which considers each split and divides it into only useful predictors
 -    It uses two hyper paramaters `mtry` which considers x predictors in each split (it can be tuned to optimal value of useful predictors. and `min_n` to stop spliting the data 
 ```{r}
+library(vip)
 # For missingness inside the dependent variable 
 remit_train_clean <- remit_train |>
   filter(!is.na(remittances_gdp))
@@ -1263,4 +1264,20 @@ rf_tuned <- rf_wf |>
 ## Measuring the RMSE 
 rf_tuned |>
   collect_metrics()
+
+rf_tuned |> 
+  show_best(metric = "rmse", n = 10)
+
+## selecting the best specification and fit it to the full training data. 
+final_rf_wf <- rf_wf |> 
+  finalize_workflow(best_rf)
+
+final_rf_fit <- final_rf_wf |> 
+  fit(data = remit_train_clean)
+
+# Variable importance 
+final_rf_fit |> 
+  extract_fit_parsnip() |> 
+  vip(num_features = 10)
+
 ```
