@@ -1022,7 +1022,7 @@ Less Strong change and thus probably doesn't warrant inclusion.
 
 **Takeaways:**
 
--   Predictive power of lagged deportations and GDP improve model fit the best (shift the slopes of our relationships) most.
+-   Predictive power of lagged deportations and GDP improve model fit the best (shift the slopes of our relationships most).
 
 -   For the other predictors, including changes to migrant stock, terror, and unemployment the relationships for our key variables barely changed indicating no changes in explanatory power.
 
@@ -1048,6 +1048,11 @@ step_mutate(
 step_mutate(
     gdp_per = log(gdp_per + 1)) |>
 step_normalize(all_numeric_predictors())
+
+## Processing the full training data using parameter specification. 
+bake(prep(recipe_baseline, training = remit_train), new_data = remit_train)
+
+
 ```
 
 ```{r}
@@ -1134,17 +1139,17 @@ ridge_fit
 ```
 
 ## Comment:
-- penalty value with the lowest RMSE: best_ridge has a penalty \~ 0. The penalty disappears, with the model
-becomes almost identical to standard linear regression. The cross-validation procedure
-- shows that adding regularization does not improve predictive performance relative to an unpenalized linear model.
-- ridge_fit shows that ridge ≈ OLS Coefficients will be very similar to baseline linear model
 
-## Conclusion: 
-The ridge regression regularization indicated increasing deviance as the penalty decreased, 
-with cross-validation selecting a penalty effectively equal to zero. 
-This suggests that the unpenalized linear model already provides an optimal fit for the data.
+-   penalty value with the lowest RMSE: best_ridge has a penalty \~ 0. The penalty disappears, with the model becomes almost identical to standard linear regression. The cross-validation procedure
+-   shows that adding regularization does not improve predictive performance relative to an unpenalized linear model.
+-   ridge_fit shows that ridge ≈ OLS Coefficients will be very similar to baseline linear model
+
+## Conclusion:
+
+The ridge regression regularization indicated increasing deviance as the penalty decreased, with cross-validation selecting a penalty effectively equal to zero. This suggests that the unpenalized linear model already provides an optimal fit for the data.
 
 # LASSO
+
 ```{r}
 
 # we specify the LASSO model
@@ -1184,13 +1189,78 @@ tidy(lasso_fit) %>%
 
 
 ```
+
 # Comment
-Cross-validation selected a non-zero penalty for the LASSO model, indicating that  it improves predictive performance. The LASSO regularization path shows a small set of predictors entering the model as the penalty decreases, highlighting its role as a variable selection method.
+
+Cross-validation selected a non-zero penalty for the LASSO model, indicating that it improves predictive performance. The LASSO regularization path shows a small set of predictors entering the model as the penalty decreases, highlighting its role as a variable selection method.
 
 # Comment on selected predictors
+
 The LASSO model selected a set of nine predictors. Remittance intensity is negatively associated with GDP per capita and macroeconomic instability, while unemployment, deportations, and internet access exhibit positive relationships, consistent with counter-cyclical and transaction-cost mechanisms.
 
 # Why LASSO is useful
-- The dataset benefits from variable selection (LASSO), not from coefficient stabilization (RIDGE).
 
-\`\`\`{r}
+-   The dataset benefits from variable selection (LASSO), not from coefficient stabilization (RIDGE).
+
+# (Miguel Random Forrest)
+We use this model a regularizaiton model, to reduce variance error by reducing the important of less important predictors. It is a bagging algorithm which considers each split and divides it into only useful predictors
+-    It uses two hyper paramaters `mtry` which considers x predictors in each split (it can be tuned to optimal value of useful predictors. and `min_n` to stop spliting the data 
+```{r}
+# For missingness inside the dependent variable 
+remit_train_clean <- remit_train |>
+  filter(!is.na(remittances_gdp))
+
+# Smaller CV for run time optimization 
+rf_folds <- vfold_cv(remit_train_clean, v = 5)
+
+## Given the high degree of missingness a recipe that accounts for nas will avoid it from breaking down using median imputation. 
+recipe_alt <- 
+  recipe(remittances_gdp ~ stock + gdp_per + unemployment + dist_cap + terror + deportations + internet + inflation + country_name,
+  data = remit_train_clean) |>
+update_role(country_name, new_role = "id") |>
+step_impute_median(all_numeric_predictors()) |>
+step_lag(gdp_per, unemployment, lag = 1) |>
+step_mutate(
+    gdp_per = log(gdp_per + 1)) |>
+step_normalize(all_numeric_predictors()) 
+
+bake(prep(recipe_alt, training = remit_train_clean), new_data = remit_train_clean)
+
+
+## Creating a Random Forest Model set up for tuning
+rf_mod <- rand_forest(
+  trees = tune(),
+  mtry = tune(),
+  min_n = tune()) |>
+  set_mode(mode = "regression") |>
+  set_engine(engine = "ranger", 
+             importance = "impurity", 
+             num.threads = 4)
+
+## Creating a workflow. Need to use alternative specific because it accounts for missingness which will lead the model to fail. 
+rf_wf <- workflow() |>
+  add_recipe(recipe_alt) |>
+  add_model(rf_mod)
+
+## Finalize parameters
+rf_params <- parameters(rf_mod) 
+rf_params <- finalize(rf_params, remit_train) 
+
+rf_params
+
+## tuning grid 
+rf_grid <- grid_max_entropy(
+  rf_params, 
+  size = 20 )
+
+## Tuning it within cross validation using our hyperparamters.
+rf_tuned <- rf_wf |>
+  tune_grid(
+    resamples = rf_folds,
+    grid = rf_grid,
+    control = control_grid(save_pred = TRUE))
+
+## Measuring the RMSE 
+rf_tuned |>
+  collect_metrics()
+```
