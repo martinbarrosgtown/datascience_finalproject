@@ -5,7 +5,8 @@ format:
   html:
     toc: true
     toc-depth: 3
-    code-fold: false
+    code-fold: true
+    embed-resources: true
     theme: cosmo
 editor: visual
 ---
@@ -328,7 +329,7 @@ All unemployment values are valid percentages (0-100%).
 
 ------------------------------------------------------------------------
 
-# STEP 4: Log Transformations for Skewed Variables
+# STEP 5: Log Transformations for Skewed Variables
 
 Since remittances and GDP are highly right-skewed, we need to create and examine log.
 
@@ -496,7 +497,9 @@ ggplot(remit_train, aes(x = deportations + 1, y = remittances + 1)) +
   theme_minimal()
 ```
 
--   On a log–log scale, deportations and remittances show a positive but noisy association, suggesting remittances tend to rise with deportations. ------------------------------------------------------------------------
+-   On a log–log scale, deportations and remittances show a positive but noisy association, suggesting remittances tend to rise with deportations.
+
+------------------------------------------------------------------------
 
 # STEP 5: Categorical Variables Analysis
 
@@ -620,7 +623,7 @@ remit_train |>
 
 ```
 
-## Start assessing countries of interes
+## Start assessing countries of interest
 
 ```{r fig.width=10, fig.height=6}
 #Start assessing countries of interes
@@ -785,7 +788,9 @@ ggplot(melted_cor_log, aes(Var1, Var2, fill = value)) +
 ```
 
 -   Remittances are most strongly positively correlated with the stock of migrants (0.49), suggesting migrant presence is a key driver, while other macro variables show only weak associations.
--   Remittances as % of GDP are negatively correlated with GDP per capita ( −0.48), indicating remittances matter more (relative to GDP) in poorer countries. ------------------------------------------------------------------------
+-   Remittances as % of GDP are negatively correlated with GDP per capita ( −0.48), indicating remittances matter more (relative to GDP) in poorer countries.
+
+------------------------------------------------------------------------
 
 # STEP 7: Time Trends Analysis
 
@@ -833,7 +838,7 @@ Remittances as a percentage of GDP have stayed relatively **stable around 3-4%**
 
 ------------------------------------------------------------------------
 
-# Step 8: Exploring lagged effects
+# STEP 8: Exploring lagged effects
 
 It is likely that past changes to country of origin conditions is likely to be more illustrative of future remittances than current conditions. For example, while a downward shock in GDP may influence current migration, migrants may take time to settle into the US and thus begin remitting back home.
 
@@ -1023,9 +1028,40 @@ Less Strong change and thus probably doesn't warrant inclusion.
 
 -   **Next Steps:** using `step_mutate` in our recipe to add lags to our `gdp_per` and `deportations` would account for this.
 
+------------------------------------------------------------------------
+
+# STEP 9: Cross-validation set up
+
 ```{r}
-## Workflow plan for our recipes
+## To improve the accuracy of our estimated error rates, we set up a 10-fold cross validation with 5 repetitions since we have a relatively small number of observations within the training data
+remit_folds <- vfold_cv(data = remit_train, v = 10, repeats = 5)
+```
+
+```{r}
+## Recipe (baseline model)
+recipe_baseline <- 
+  recipe(remittances_gdp ~ stock + gdp_per + unemployment + dist_cap + terror + deportations + internet + inflation,
+  data = remit_train) |>
 step_mutate(
-    gdp_lag = lag(gdp_per),
-    unemp_lag = lag(unemployment))
+  gdp_lag = lag(gdp_per), 
+  unemp_lag = lag(unemployment)) |>
+step_mutate(
+    gdp_per = log(gdp_per + 1)) |>
+step_normalize(all_numeric_predictors())
+```
+
+```{r}
+## Linear model
+lm_baseline <- linear_reg() |>
+  set_mode(mode = "regression") |>
+  set_engine(engine = "lm")
+
+## Create workflow
+lm_workflow <- workflow() |>
+  add_recipe(recipe_baseline) |>
+  add_model(lm_baseline)
+
+## Fit model
+lm_results <- lm_workflow |>
+  fit_resamples(resamples = remit_folds)
 ```
