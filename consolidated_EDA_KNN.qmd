@@ -1,0 +1,1186 @@
+---
+title: "Remittances Data - Exploratory Data Analysis Consolidated"
+author: "Cova, Langbehn, Villa & Barros" 
+format: 
+  html:
+    toc: true
+    toc-depth: 3
+    code-fold: true
+    embed-resources: true
+    theme: cosmo
+editor: visual
+---
+
+# Setup and Data Loading
+
+## Load Required Packages
+
+```{r message=FALSE, warning=FALSE}
+library(tidymodels)   
+library(tidyverse)   
+library(janitor)   
+library(naniar)       
+library(assertr)      
+library(corrplot)
+library(gridExtra)
+
+## Turn off scientific notation for readable numbers
+options(scipen = 999)
+```
+
+## Load the Data
+
+```{r message=FALSE, warning=FALSE}
+## Read in the CSV file
+remittances <- read_csv("remittances.csv")
+```
+
+## Create Training and Testing Splits
+
+```{r}
+## Set seed for reproducibility
+set.seed(20251211)
+
+## Split data: 80% training, 20% testing
+remit_split <- initial_split(data = remittances, prop = 0.8)
+remit_train <- training(x = remit_split) 
+remit_test <- testing(x = remit_split)
+```
+
+------------------------------------------------------------------------
+
+# STEP 1: Data Overview
+
+## Get a Quick Look at the Data Structure
+
+```{r}
+## View the first few rows and column types
+glimpse(remit_train)
+```
+
+The training data has **3,918 rows** and **19 columns**. We can see:
+
+-   Character columns: country_name, country_code
+-   Numeric columns: year, remittances, gdp, unemployment, etc.
+
+## Calculate Summary Statistics
+
+```{r}
+## Get min, max, mean, median for all variables
+summary(remit_train)
+```
+
+Key observations:
+
+-   Years range from 1994 to 2024 (30 years of data)
+-   Remittances range from \$11,470 to \$137.7 billion
+
+## Check Internal Structure
+
+```{r}
+## Detailed structure of the data
+str(remit_train)
+```
+
+All numeric variables are stored as `num` or `dbl` (double precision), and text variables are stored as `chr` (character).
+
+------------------------------------------------------------------------
+
+# STEP 2: Column Names and Types
+
+## View Original Column Names
+
+```{r}
+## Check current column names
+names(remit_train)
+```
+
+Some column names have spaces and capital letters.
+
+## Clean Column Names to Snake Case
+
+```{r}
+## Convert to lowercase with underscores
+remit_train <- remit_train |>
+  clean_names()
+
+## Verify the cleaned names
+names(remit_train)
+```
+
+Now all column names are lowercase with underscores.
+
+------------------------------------------------------------------------
+
+# STEP 3: Missing Data Analysis
+
+## Count Missing Values by Column
+
+```{r}
+## Count NA values in each column
+colSums(is.na(remit_train))
+```
+
+Several variables have missing data. Let's calculate the percentage!
+
+## Calculate Percentage of Missing Data
+
+```{r}
+## Calculate percent missing for each variable
+remit_train |>
+  summarise(across(everything(), ~sum(is.na(.)) / n() * 100))
+```
+
+**Major findings:**
+
+-   **poverty**: 64.3% missing
+-   **stock**: 49.8% missing
+-   **remittances**: 15.8% missing
+-   **remittances_gdp**: 16.3% missing
+
+------------------------------------------------------------------------
+
+# STEP 4: Outlier Detection and Distribution Analysis
+
+## Examine Remittances (Our Target Variable)
+
+### Summary Statistics for Remittances
+
+```{r}
+## Get min, max, mean, median, quartiles
+summary(remit_train$remittances)
+```
+
+The mean (\$2.55 billion) is much larger than the median (\$529 million). The data is **right-skewed**.
+
+### Check overall data distribution
+
+```{r fig.width=10, fig.height=5}
+## Create a point plot (from class notes Section 5.6.1)
+remit_train |>
+  select(remittances, remittances_gdp, gdp, stock, unemployment,deportations) |>
+  pivot_longer(everything()) |>
+  ggplot(aes(value)) +
+  geom_histogram(bins = 30) +
+  facet_wrap(~name, scales = "free") +
+  theme_minimal()
+
+#CAVEAT: I could not 'clean' the x axis (log would be the way to solve it but 
+#we want to show how skewed the distribution is)
+
+```
+
+### Point Plot to See Distribution
+
+```{r fig.width=10, fig.height=5}
+## Create a point plot (from class notes Section 5.6.1)
+remit_train |>
+  ggplot(aes(remittances, 1)) +
+  geom_point(alpha = 0.2) +
+  scale_y_continuous(breaks = 0) +
+  labs(y = NULL, title = "Distribution of Remittances") +
+  theme_bw() +
+  theme(panel.border = element_blank())
+```
+
+Most points cluster on the left (lower values) with a few extreme points on the right (confirms right-skewness).
+
+### Histogram to See Frequency Distribution
+
+```{r fig.width=10, fig.height=6}
+## Create histogram with 30 bins
+remit_train |>
+  ggplot(aes(x = remittances)) +
+  geom_histogram(bins = 30, fill = "steelblue") +
+  theme_minimal() +
+  labs(title = "Distribution of Remittances",
+       x = "Remittances (USD)",
+       y = "Count")
+```
+
+The histogram is heavily concentrated on the left with a long tail to the right. This is classic right-skewed data.
+
+### Boxplot to Identify Outliers
+
+```{r fig.width=10, fig.height=6}
+## Create boxplot to see outliers
+remit_train |>
+  ggplot(aes(y = remittances)) +
+  geom_boxplot(fill = "steelblue") +
+  theme_minimal() +
+  labs(title = "Boxplot of Remittances",
+       y = "Remittances (USD)")
+```
+
+Many points appear above the upper whisker (outliers). These are likely large countries like Mexico that receive billions in remittances.
+
+## Examine GDP
+
+### Summary Statistics for GDP
+
+```{r}
+## Get summary statistics
+summary(remit_train$gdp)
+```
+
+GDP also shows huge range - from \$21 million to \$18.7 trillion.
+
+### Point Plot for GDP Distribution
+
+```{r fig.width=10, fig.height=5}
+## Create point plot for GDP
+remit_train |>
+  ggplot(aes(gdp, 1)) +
+  geom_point(alpha = 0.2) +
+  scale_y_continuous(breaks = 0) +
+  labs(y = NULL, title = "Distribution of GDP") +
+  theme_bw() +
+  theme(panel.border = element_blank())
+```
+
+GDP shows the same right-skewed pattern as remittances. Large economies have much higher GDP than small economies.
+
+## Examine Unemployment
+
+### Summary Statistics for Unemployment
+
+```{r}
+## Get summary statistics
+summary(remit_train$unemployment)
+```
+
+Unemployment ranges from 0.11% to 34.01%.
+
+### Point Plot for Unemployment Distribution
+
+```{r fig.width=10, fig.height=5}
+## Create point plot for unemployment
+remit_train |>
+  ggplot(aes(unemployment, 1)) +
+  geom_point(alpha = 0.2) +
+  scale_y_continuous(breaks = 0) +
+  labs(y = NULL, title = "Distribution of Unemployment") +
+  theme_bw() +
+  theme(panel.border = element_blank())
+```
+
+Unemployment appears more evenly distributed than remittances or GDP.
+
+## Examine Inflation
+
+### Summary Statistics for Inflation
+
+```{r}
+## Get summary statistics
+summary(remit_train$inflation)
+```
+
+The maximum inflation is 6,041%! (outlier) Most inflation values are between 1.7% and 9%,
+
+### Point Plot for Inflation Distribution
+
+```{r fig.width=10, fig.height=5}
+## Create point plot for inflation
+remit_train |>
+  ggplot(aes(inflation, 1)) +
+  geom_point(alpha = 0.2) +
+  scale_y_continuous(breaks = 0) +
+  labs(y = NULL, title = "Distribution of Inflation") +
+  theme_bw() +
+  theme(panel.border = element_blank())
+```
+
+## Data Quality Unit Tests
+
+### Test 1: Are All Remittances Positive?
+
+```{r}
+## Test that remittances > 0 when not missing
+remit_train |>
+  filter(!is.na(remittances)) |>
+  verify(remittances > 0) |>
+  summarise(mean_remittances = mean(remittances, na.rm = TRUE))
+```
+
+All remittances are positive. The mean is \$2.55 billion.
+
+### Test 2: Are All Years in Valid Range?
+
+```{r}
+## Test that years are between 1994 and 2024
+remit_train |>
+  verify(year >= 1994 & year <= 2024) |>
+  summarise(mean_year = mean(year))
+```
+
+All years are within the expected range.
+
+### Test 3: Are All Unemployment Values Valid?
+
+```{r}
+## Test that unemployment is between 0 and 100
+remit_train |>
+  filter(!is.na(unemployment)) |>
+  verify(unemployment >= 0 & unemployment <= 100) |>
+  summarise(mean_unemployment = mean(unemployment, na.rm = TRUE))
+```
+
+All unemployment values are valid percentages (0-100%).
+
+------------------------------------------------------------------------
+
+# STEP 5: Log Transformations for Skewed Variables
+
+Since remittances and GDP are highly right-skewed, we need to create and examine log.
+
+## Create Log-Transformed Variables
+
+```{r}
+## Create log-transformed versions of skewed variables
+remit_train <- remit_train |>
+  mutate(
+    log_remittances = log(remittances + 1),
+    log_gdp = log(gdp + 1)
+  )
+```
+
+We add 1 before taking the log to handle any zero values (log(0) is undefined).
+
+## Examine Log-Transformed Remittances
+
+### Summary Statistics for Log Remittances
+
+```{r}
+## Get summary statistics for log remittances
+summary(remit_train$log_remittances)
+```
+
+### Histogram of Log Remittances
+
+```{r fig.width=10, fig.height=6}
+## Create histogram for log-transformed remittances
+remit_train |>
+  filter(!is.na(log_remittances)) |>
+  ggplot(aes(x = log_remittances)) +
+  geom_histogram(bins = 30, fill = "darkgreen", color = "white") +
+  theme_minimal() +
+  labs(title = "Distribution of Log-Transformed Remittances",
+       subtitle = "Much more normal distribution after log transformation",
+       x = "Log(Remittances + 1)",
+       y = "Count")
+```
+
+The log-transformed remittances show a much more normal distribution compared to the original right-skewed data.
+
+### Boxplot of Log Remittances
+
+```{r fig.width=10, fig.height=6}
+## Create boxplot for log remittances
+remit_train |>
+  filter(!is.na(log_remittances)) |>
+  ggplot(aes(y = log_remittances)) +
+  geom_boxplot(fill = "darkgreen") +
+  theme_minimal() +
+  labs(title = "Boxplot of Log-Transformed Remittances",
+       y = "Log(Remittances + 1)")
+```
+
+Fewer outliers visible after log transformation.
+
+## Examine Log-Transformed GDP
+
+### Summary Statistics for Log GDP
+
+```{r}
+## Get summary statistics for log GDP
+summary(remit_train$log_gdp)
+```
+
+### Histogram of Log GDP
+
+```{r fig.width=10, fig.height=6}
+## Create histogram for log-transformed GDP
+remit_train |>
+  filter(!is.na(log_gdp)) |>
+  ggplot(aes(x = log_gdp)) +
+  geom_histogram(bins = 30, fill = "darkblue", color = "white") +
+  theme_minimal() +
+  labs(title = "Distribution of Log-Transformed GDP",
+       subtitle = "More normal distribution after log transformation",
+       x = "Log(GDP + 1)",
+       y = "Count")
+```
+
+Log GDP also shows a more normal distribution.
+
+## Compare Original vs Log-Transformed
+
+### Side-by-Side: Original vs Log Remittances
+
+```{r fig.width=12, fig.height=5}
+## Create comparison plots
+p1 <- remit_train |>
+  filter(!is.na(remittances)) |>
+  ggplot(aes(x = remittances)) +
+  geom_histogram(bins = 30, fill = "steelblue") +
+  theme_minimal() +
+  labs(title = "Original Remittances (Right-Skewed)",
+       x = "Remittances (USD)")
+
+p2 <- remit_train |>
+  filter(!is.na(log_remittances)) |>
+  ggplot(aes(x = log_remittances)) +
+  geom_histogram(bins = 30, fill = "darkgreen") +
+  theme_minimal() +
+  labs(title = "Log-Transformed Remittances (More Normal)",
+       x = "Log(Remittances + 1)")
+
+grid.arrange(p1, p2, ncol = 2)
+```
+
+The log transformation successfully converts the right-skewed distribution into a more normal distribution, which is better for modeling.
+
+### Side-by-Side: Original vs Log GDP
+
+```{r fig.width=12, fig.height=5}
+## Create comparison plots for GDP
+p3 <- remit_train |>
+  filter(!is.na(gdp)) |>
+  ggplot(aes(x = gdp)) +
+  geom_histogram(bins = 30, fill = "steelblue") +
+  theme_minimal() +
+  labs(title = "Original GDP (Right-Skewed)",
+       x = "GDP (USD)")
+
+p4 <- remit_train |>
+  filter(!is.na(log_gdp)) |>
+  ggplot(aes(x = log_gdp)) +
+  geom_histogram(bins = 30, fill = "darkblue") +
+  theme_minimal() +
+  labs(title = "Log-Transformed GDP (More Normal)",
+       x = "Log(GDP + 1)")
+
+grid.arrange(p3, p4, ncol = 2)
+```
+
+## Relationship: Log GDP vs Log Remittances
+
+```{r fig.width=10, fig.height=6}
+## Scatter plot with log-transformed variables
+remit_train |>
+  filter(!is.na(log_gdp), !is.na(log_remittances)) |>
+  ggplot(aes(x = log_gdp, y = log_remittances)) +
+  geom_point(alpha = 0.3, color = "steelblue") +
+  geom_smooth(method = "lm", se = TRUE, color = "red") +
+  theme_minimal() +
+  labs(title = "Log GDP vs Log Remittances",
+       subtitle = "Clearer linear relationship after log transformation",
+       x = "Log(GDP + 1)",
+       y = "Log(Remittances + 1)")
+```
+
+The relationship between log GDP and log remittances is **more linear** than the original variables, which will improve model performance.
+
+## Assessing deportations and remittances
+
+```{r fig.width=10, fig.height=6}
+ggplot(remit_train, aes(x = deportations + 1, y = remittances + 1)) +
+  geom_point(alpha = 0.3, color = "steelblue") +
+  geom_smooth(method = "lm", se = TRUE, color = "red") +
+  scale_x_log10() +
+  scale_y_log10() +
+  labs(
+    title = "Log–Log Relationship Between Deportations and Remittances",
+    x = "Log(Deportations + 1)",
+    y = "Log(Remittances + 1)"
+  ) +
+  theme_minimal()
+```
+
+-   On a log–log scale, deportations and remittances show a positive but noisy association, suggesting remittances tend to rise with deportations.
+
+------------------------------------------------------------------------
+
+# STEP 5: Categorical Variables Analysis
+
+## Count Unique Countries
+
+```{r}
+## Count distinct country names
+n_distinct(remit_train$country_name)
+```
+
+We have 158 different countries in the dataset.
+
+## View Frequency Table (First 20 Countries)
+
+```{r}
+## Show how many observations per country
+head(table(remit_train$country_name), 20)
+```
+
+Most countries have between 20-30 observations, representing roughly 20-30 years of data.
+
+## Create Bar Chart of Top 20 Countries
+
+```{r fig.width=10, fig.height=8}
+## Count observations per country and plot top 20
+remit_train |>
+  count(country_name, sort = TRUE) |>
+  slice_head(n = 20) |>
+  ggplot(aes(x = reorder(country_name, n), y = n)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  coord_flip() +
+  theme_minimal() +
+  labs(title = "Top 20 Countries by Number of Observations",
+       x = "Country",
+       y = "Count")
+```
+
+Countries are fairly evenly represented. Bahrain has the most observations (30), while several countries have around 20-29 observations.
+
+## Create Bar Chart of Top 15 by total remittances (2024) & Top 15 by remittances/GDP (2024)
+
+```{r}
+
+remit_train %>%
+  filter(year == 2024) %>%
+  slice_max(remittances, n = 15) %>%
+  ggplot(aes(
+    x = fct_reorder(country_name, remittances),
+    y = remittances / 1e9
+  )) +
+  geom_col(fill = "steelblue") +
+  coord_flip() +
+  labs(
+    title = "Top 15 Remittance Receivers (2024)",
+    x = "Country",
+    y = "Remittances (Billions USD)"
+  ) +
+  theme_minimal()
+
+# Top 15 by remittances/GDP (2024)
+remit_train %>%
+  filter(year == 2024) %>%
+  slice_max(remittances_gdp, n = 15) %>%   # preferred over top_n()
+  mutate(`Country Name` = fct_reorder(country_name, remittances_gdp)) %>%
+  ggplot(aes(x = `Country Name`, y = remittances_gdp)) +
+  geom_col(fill = "coral") +
+  coord_flip() +
+  labs(
+    title = "Top 15 Countries: Remittances as % GDP (2024)",
+    x = "Country",
+    y = "Remittances (% GDP)"
+  ) +
+  theme_minimal()
+```
+
+## Top 10 countries - Remittances as a % of the GDP
+
+```{r}
+remit_train |>
+  group_by(country_name) |>
+  summarize(mean_ratio = mean(remittances_gdp, na.rm = TRUE)) |>
+  arrange(desc(mean_ratio)) |>
+  slice_head(n = 10)
+
+top10 <- remit_train |>
+  group_by(country_name) |>
+  summarize(mean_ratio = mean(remittances_gdp, na.rm = TRUE)) |>
+  arrange(desc(mean_ratio)) |>
+  slice_head(n = 10)
+
+ggplot(top10, aes(x = reorder(country_name, mean_ratio), y = mean_ratio)) +
+  geom_col(fill = "coral") +
+  coord_flip() +
+  labs(
+    title = "Top 10 Countries by Average Remittances % of GDP",
+    x = "Country",
+    y = "Average Remittances/GDP"
+  ) +
+  theme_minimal()
+
+```
+
+## Remittances per country (Original Scale)
+
+```{r fig.width=10, fig.height=6}
+remit_train |>
+  filter(country_name %in% c(
+    "Nicaragua", "El Salvador", "Honduras", "Guatemala", "Haiti", "India"
+  )) |>
+  ggplot(aes(x = year, y = remittances_gdp, color = country_name)) +
+  geom_line(linewidth = 1) +
+  scale_y_log10() +
+  labs(
+    title = "Remittance Trends Over Time",
+    subtitle = "Selected Countries (log scale)",
+    x = "Year",
+    y = "Remittances (% of GDP, log scale)",
+    color = "Country"
+  ) +
+  theme_minimal()
+
+```
+
+## Start assessing countries of interest
+
+```{r fig.width=10, fig.height=6}
+#Start assessing countries of interes
+countries_of_interest <- c( "Nicaragua", "El Salvador", "Honduras", "Guatemala", 
+                            "Haiti", "India")
+
+filtered <- remit_train |>
+  filter(country_name %in% countries_of_interest)
+
+ggplot(filtered, aes(log(stock), log(remittances), color = country_name)) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(
+    x = "log(stock)",
+    y = "log(remittances)",
+    title = "Stock–Remittance Relationship for Selected Countries",
+    color = "Country"
+  ) +
+  theme_minimal()
+
+#Comment: comparing the stock–Remittance Relationship for Selected Countries
+```
+
+------------------------------------------------------------------------
+
+# STEP 6: Relationships Between Variables
+
+## GDP vs Remittances (Original Scale)
+
+```{r fig.width=10, fig.height=6}
+## Scatter plot with trend line
+remit_train |>
+  ggplot(aes(x = gdp, y = remittances)) +
+  geom_point(alpha = 0.3, color = "steelblue") +
+  geom_smooth(method = "lm", se = TRUE, color = "red") +
+  theme_minimal() +
+  labs(title = "Relationship Between GDP and Remittances (Original Scale)",
+       x = "GDP (USD)",
+       y = "Remittances (USD)")
+```
+
+There is a clear positive relationship. Countries with larger economies (higher GDP) tend to receive more remittances in absolute dollar amounts. The red line shows the linear trend.
+
+## Log GDP vs Log Remittances (Better for Modeling)
+
+```{r fig.width=10, fig.height=6}
+## Scatter plot with log-transformed variables
+remit_train |>
+  filter(!is.na(log_gdp), !is.na(log_remittances)) |>
+  ggplot(aes(x = log_gdp, y = log_remittances)) +
+  geom_point(alpha = 0.3, color = "darkgreen") +
+  geom_smooth(method = "lm", se = TRUE, color = "red") +
+  theme_minimal() +
+  labs(title = "Log GDP vs Log Remittances (Log Scale - Better Linear Fit)",
+       subtitle = "This relationship is more appropriate for linear regression models",
+       x = "Log(GDP + 1)",
+       y = "Log(Remittances + 1)")
+```
+
+The log-transformed relationship is **more linear** and will produce better model predictions.
+
+## GDP Per Capita vs Remittances as % of GDP
+
+```{r fig.width=10, fig.height=6}
+## Scatter plot with trend line
+remit_train |>
+  ggplot(aes(x = gdp_per, y = remittances_gdp)) +
+  geom_point(alpha = 0.3, color = "steelblue") +
+  geom_smooth(method = "lm", se = TRUE, color = "red") +
+  theme_minimal() +
+  labs(title = "GDP Per Capita vs Remittances as % of GDP",
+       x = "GDP Per Capita (USD)",
+       y = "Remittances as % of GDP")
+```
+
+Poorer countries (lower GDP per capita) depend more heavily on remittances as a percentage of their economy. Richer countries receive remittances but they represent a smaller share of their total GDP.
+
+## Unemployment vs Remittances
+
+```{r fig.width=10, fig.height=6}
+## Scatter plot with trend line
+remit_train |>
+  ggplot(aes(x = unemployment, y = remittances)) +
+  geom_point(alpha = 0.3, color = "steelblue") +
+  geom_smooth(method = "lm", se = TRUE, color = "red") +
+  theme_minimal() +
+  labs(title = "Unemployment vs Remittances",
+       x = "Unemployment Rate (%)",
+       y = "Remittances (USD)")
+```
+
+There is a **slight negative relationship** (it is weak). Unemployment doesn't appear to be a strong predictor of remittances.
+
+## Correlation Matrix (Numbers)
+
+```{r}
+## Calculate correlations between all numeric variables
+remit_train |>
+  select(where(is.numeric)) |>
+  cor(use = "complete.obs") |>
+  round(2)
+```
+
+-   **gdp and remittances: 0.46** - Moderate positive (as GDP increases, remittances increase)
+-   **log_gdp and log_remittances: Check the correlation matrix** - Likely stronger correlation
+-   **stock and deportations: 0.73** - Strong positive (might cause multicollinearity issues)
+-   **dist_pop and dist_cap: 1.00** - Perfect correlation! These measure essentially the same thing. **We must drop one.**
+-   **internet and year: 0.69** - Strong positive (internet access increases over time)
+-   **gdp_per and vulnerable_emp: -0.63** - Strong negative (richer countries have less vulnerable employment)
+
+## Correlation Matrix (Heatmap)
+
+```{r fig.width=12, fig.height=10}
+## Create visual correlation matrix (Eva's example)
+remit_train |>
+  select(where(is.numeric)) |>
+  cor(use = "complete.obs") |>
+  corrplot(method = "color", 
+           type = "upper",
+           tl.col = "black",
+           tl.srt = 45,
+           title = "Correlation Matrix",
+           mar = c(0,0,2,0))
+```
+
+-   **Blue squares** = positive correlation (variables increase together)
+-   **Red squares** = negative correlation (one increases, other decreases)
+-   **Darker colors** = stronger correlation
+
+```{r}
+## Create visual correlation matrix (Gaby's example)
+library(reshape2)
+
+#Create variable to represent numeric vars 
+numeric_vars_log <- remit_train %>%
+  select(remittances_gdp, remittances, stock, unemployment, gdp_per, 
+         inflation, internet, dist_cap, terror) %>%
+  mutate(
+    remittances_gdp = log1p(remittances_gdp),
+    remittances     = log1p(remittances),
+    stock            = log1p(stock),        # migrant stock
+    gdp_per          = log1p(gdp_per),
+    internet         = log1p(internet),
+    dist_cap         = log1p(dist_cap)
+  ) %>%
+  na.omit()
+
+cor_matrix_log <- cor(numeric_vars_log, use = "complete.obs")
+melted_cor_log <- melt(cor_matrix_log)
+
+ggplot(melted_cor_log, aes(Var1, Var2, fill = value)) +
+  geom_tile() +
+  geom_text(aes(label = round(value, 2)), size = 3) +
+  scale_fill_gradient2(
+    low = "blue", mid = "white", high = "red",
+    midpoint = 0, limits = c(-1, 1)
+  ) +
+  labs(title = "Correlation Heatmap (Log-Transformed Variables)") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+-   Remittances are most strongly positively correlated with the stock of migrants (0.49), suggesting migrant presence is a key driver, while other macro variables show only weak associations.
+-   Remittances as % of GDP are negatively correlated with GDP per capita ( −0.48), indicating remittances matter more (relative to GDP) in poorer countries.
+
+------------------------------------------------------------------------
+
+# STEP 7: Time Trends Analysis
+
+## Remittances Over Time
+
+```{r fig.width=12, fig.height=6}
+## Calculate average remittances per year and plot
+remit_train |>
+  group_by(year) |>
+  summarise(avg_remittances = mean(remittances, na.rm = TRUE)) |>
+  ggplot(aes(x = year, y = avg_remittances)) +
+  geom_line(color = "steelblue", linewidth = 1) +
+  geom_point(color = "steelblue") +
+  theme_minimal() +
+  labs(title = "Average Remittances Over Time (1994-2024)",
+       x = "Year",
+       y = "Average Remittances (USD)")
+```
+
+Remittances show a clear upward trend over 30 years. We can see:
+
+-   Steady growth from 1994 to 2008.
+-   A dip around 2008-2009 (global financial crisis).
+-   Recovery and continued growth.
+-   Another dip around 2020 (COVID-19 pandemic).
+-   Strong rebound after 2020.
+
+## Remittances as % of GDP Over Time
+
+```{r fig.width=12, fig.height=6}
+## Calculate average remittances as % of GDP per year and plot
+remit_train |>
+  group_by(year) |>
+  summarise(avg_remittances_gdp = mean(remittances_gdp, na.rm = TRUE)) |>
+  ggplot(aes(x = year, y = avg_remittances_gdp)) +
+  geom_line(color = "steelblue", linewidth = 1) +
+  geom_point(color = "steelblue") +
+  theme_minimal() +
+  labs(title = "Average Remittances as % of GDP Over Time",
+       x = "Year",
+       y = "Remittances as % of GDP")
+```
+
+Remittances as a percentage of GDP have stayed relatively **stable around 3-4%** over time. This means remittances are growing roughly in line with GDP growth, not becoming more or less important to economies over time.
+
+------------------------------------------------------------------------
+
+# STEP 8: Exploring lagged effects
+
+It is likely that past changes to country of origin conditions is likely to be more illustrative of future remittances than current conditions. For example, while a downward shock in GDP may influence current migration, migrants may take time to settle into the US and thus begin remitting back home.
+
+These lagged effect would seem to be the most plausible with GDP, unemployment, terror, deportations, and changes in migrant stock (inward migration)
+
+```{r}
+## Lagged (1 year)
+remit_lag <- remit_train |>
+  mutate(year = as.numeric(year)) |>
+  arrange(country_name, year) |>
+  group_by(country_name) |>
+  mutate(
+    gdp_lag = lag(gdp_per),
+    unemp_lag = lag(unemployment), 
+    terror_lag = lag(terror), 
+    deportations_lag = lag(deportations), 
+    stock_lag = lag(stock), 
+  ) |>
+  ungroup()
+# Verifying that the lag worked. 
+remit_lag |>
+  select(country_name, year, gdp_per, gdp_lag) |>
+  arrange(country_name, year) |>
+  filter(!is.na(gdp_lag)) |>
+  slice_head(n = 10)
+```
+
+## Lagged GDP per Capita
+
+```{r message=FALSE, warning=FALSE}
+## Lagged predictors relationship with remittances (as % of GDP)
+
+## GDP per capita
+# Lagged vs Unlagged
+remit_lag |>
+  pivot_longer(cols = c(gdp_per, gdp_lag),
+               names_to = "type",
+               values_to = "value") |>
+  ggplot(aes(value, remittances_gdp, color = type)) +
+  geom_point(alpha = 0.3) +
+  geom_smooth(se = FALSE) +
+  theme_minimal() +
+  labs(title = "Lagged vs Current GDP per Capita",
+       x = "GDP per capita",
+       color = "Variable") ## Doesn't Necessarily Improve Model Fit. 
+```
+
+Overall there seem to be better ways to verify whether lagged variable would improve the interpretability of our models.
+
+```{r message=FALSE, warning=FALSE}
+## Comparing Lagged vs Current GDP per capita for key countries. 
+remit_lag |>
+  filter(country_name %in% c("Nicaragua", "El Salvador", "Honduras",
+                             "Guatemala", "Haiti", "India")) |>
+  pivot_longer(
+    cols = c(gdp_per, gdp_lag),
+    names_to = "gdp_type",
+    values_to = "gdp_value"
+  ) |>
+  ggplot(aes(x = gdp_value, y = remittances_gdp,
+             color = country_name, linetype = gdp_type)) +
+  geom_point(alpha = 0.4) +
+  geom_smooth(method = "lm", se = FALSE) +
+  theme_minimal() +
+  labs(
+    title = "Lagged vs Current GDP per Capita",
+    x = "GDP per capita (current or lagged)",
+    linetype = "GDP variable"
+  )
+
+```
+
+Suggestion is that Lagged GDP demonstrates a slightly stronger relationship and thus may improve model fit. Thus it may seem that shocks or changes to prior GDP could help explain current remittances amounts.
+
+## Lagged Unemployment
+
+```{r message=FALSE, warning=FALSE}
+## Comparing Lagged vs Current Unemployment for key countries. 
+remit_lag |>
+  filter(country_name %in% c("Nicaragua", "El Salvador", "Honduras",
+                             "Guatemala", "Haiti", "India")) |>
+  pivot_longer(
+    cols = c(unemployment, unemp_lag),
+    names_to = "unemp_type",
+    values_to = "unemp_value"
+  ) |>
+  ggplot(aes(x = unemp_value, y = remittances_gdp,
+             color = country_name, linetype = unemp_type)) +
+  geom_point(alpha = 0.4) +
+  geom_smooth(method = "lm", se = FALSE) +
+  theme_minimal() +
+  labs(
+    title = "Lagged vs Current Unemployment",
+    x = "Unemployment (current or lagged)",
+    linetype = "GDP variable"
+  )
+
+```
+
+For most countries lagged unemployment does not seem to alter model fit substantially for any country other than Haiti.
+
+It likely won't improve our model fit and thus shouldn't be included.
+
+## Lagged Changes in Terror Level
+
+```{r message=FALSE, warning=FALSE}
+## Comparing Lagged vs Current Terror for key countries. 
+remit_lag |>
+  filter(country_name %in% c("Nicaragua", "El Salvador", "Honduras",
+                             "Guatemala", "Haiti", "India")) |>
+  pivot_longer(
+    cols = c(terror, terror_lag),
+    names_to = "terror_type",
+    values_to = "terror_value"
+  ) |>
+  ggplot(aes(x = terror_value, y = remittances_gdp,
+             color = country_name, linetype = terror_type)) +
+  geom_point(alpha = 0.4) +
+  geom_smooth(method = "lm", se = FALSE) +
+  theme_minimal() +
+  labs(
+    title = "Lagged vs Current Terror",
+    x = "Terror (current or lagged)",
+    linetype = "Terror variable"
+  )
+
+```
+
+It seems terror varies less, and lagged terror levels may not be too explanatory
+
+## Lagged Changes in Deportations
+
+```{r message=FALSE, warning=FALSE}
+## Comparing Lagged vs Current Deportations for key countries. 
+remit_lag |>
+  filter(country_name %in% c("Nicaragua", "El Salvador", "Honduras",
+                             "Guatemala", "Haiti", "India")) |>
+  pivot_longer(
+    cols = c(deportations, deportations_lag),
+    names_to = "deportations_type",
+    values_to = "deportations_value"
+  ) |>
+  ggplot(aes(x = deportations_value, y = remittances_gdp,
+             color = country_name, linetype = deportations_type)) +
+  geom_point(alpha = 0.4) +
+  geom_smooth(method = "lm", se = FALSE) +
+  theme_minimal() +
+  labs(
+    title = "Lagged vs Current Deportations",
+    x = "Deportations (current or lagged)",
+    linetype = "Deportations variable"
+  )
+
+```
+
+Much stronger relationship for key countries in including the lagged effects of deportations in explaining future remittances.
+
+```{r message=FALSE, warning=FALSE}
+## Comparing Lagged vs Current Deportations for key countries. 
+remit_lag |>
+  filter(country_name %in% c("Nicaragua", "El Salvador", "Honduras",
+                             "Guatemala", "Haiti", "India")) |>
+  pivot_longer(
+    cols = c(stock, stock_lag),
+    names_to = "stock_type",
+    values_to = "stock_value"
+  ) |>
+  ggplot(aes(x = stock_value, y = remittances_gdp,
+             color = country_name, linetype = stock_type)) +
+  geom_point(alpha = 0.4) +
+  geom_smooth(method = "lm", se = FALSE) +
+  theme_minimal() +
+  labs(
+    title = "Lagged vs Current Changes in Migrant Stock ",
+    x = "Migrant Stock (current or lagged)",
+    linetype = "Migrant Stock variable"
+  )
+```
+
+Less Strong change and thus probably doesn't warrant inclusion.
+
+**Takeaways:**
+
+-   Predictive power of lagged deportations and GDP improve model fit the best (shift the slopes of our relationships) most.
+
+-   For the other predictors, including changes to migrant stock, terror, and unemployment the relationships for our key variables barely changed indicating no changes in explanatory power.
+
+-   **Next Steps:** using `step_mutate` in our recipe to add lags to our `gdp_per` and `deportations` would account for this.
+
+------------------------------------------------------------------------
+
+# STEP 9: Cross-validation set up
+
+```{r}
+## To improve the accuracy of our estimated error rates, we set up a 10-fold cross validation with 5 repetitions since we have a relatively small number of observations within the training data
+remit_folds <- vfold_cv(data = remit_train, v = 10, repeats = 5)
+```
+
+```{r}
+## Recipe (baseline model)
+recipe_baseline <- 
+  recipe(remittances_gdp ~ stock + gdp_per + unemployment + dist_cap + terror + deportations + internet + inflation,
+  data = remit_train) |>
+step_mutate(
+  gdp_lag = lag(gdp_per), 
+  unemp_lag = lag(unemployment)) |>
+step_mutate(
+    gdp_per = log(gdp_per + 1)) |>
+step_normalize(all_numeric_predictors())
+```
+
+```{r}
+## Linear model
+lm_baseline <- linear_reg() |>
+  set_mode(mode = "regression") |>
+  set_engine(engine = "lm")
+
+## Create workflow
+lm_workflow <- workflow() |>
+  add_recipe(recipe_baseline) |>
+  add_model(lm_baseline)
+
+## Fit model
+lm_results <- lm_workflow |>
+  fit_resamples(resamples = remit_folds)
+```
+
+# K-Nearest Neighbors (KNN) Model
+
+## Data Preparation
+```{r}
+## Create lagged variables by country
+remit_train_lagged <- remit_train |>
+  arrange(country_name, year) |>
+  group_by(country_name) |>
+  mutate(
+    gdp_lag = lag(gdp_per),
+    deportations_lag = lag(deportations)
+  ) |>
+  ungroup()
+
+## Remove missing values
+remit_train_clean <- remit_train_lagged |>
+  select(remittances_gdp, stock, gdp_per, unemployment, dist_cap, 
+         terror, deportations, internet, inflation, gdp_lag, deportations_lag) |>
+  drop_na()
+```
+
+## Cross-Validation Setup
+```{r}
+set.seed(20251211)
+remit_folds <- vfold_cv(data = remit_train_clean, v = 10, repeats = 5)
+```
+
+## Model Setup
+```{r}
+## Recipe: log transform and normalize
+recipe_knn <- 
+  recipe(remittances_gdp ~ ., data = remit_train_clean) |>
+  step_mutate(gdp_per = log(gdp_per + 1)) |>
+  step_normalize(all_numeric_predictors())
+
+## Model: KNN with tunable K
+knn_mod <- 
+  nearest_neighbor(neighbors = tune()) |>
+  set_engine("kknn") |>
+  set_mode("regression")
+
+## Grid: test K from 1 to 99
+knn_grid <- grid_regular(neighbors(range = c(1, 99)), levels = 10)
+
+## Workflow
+knn_workflow <- 
+  workflow() |>
+  add_recipe(recipe_knn) |>
+  add_model(knn_mod)
+```
+
+## Hyperparameter Tuning
+```{r}
+knn_results <- 
+  knn_workflow |>
+  tune_grid(
+    resamples = remit_folds,
+    grid = knn_grid,
+    metrics = metric_set(rmse)
+  )
+```
+
+## Tuning Results
+```{r}
+knn_results |> collect_metrics()
+```
+```{r}
+knn_results |> show_best(metric = "rmse")
+```
+```{r}
+knn_results |> autoplot()
+```
+
+## Select Best Model
+```{r}
+best_k <- select_best(knn_results, metric = "rmse")
+final_knn_wf <- knn_workflow |> finalize_workflow(best_k)
+```
+
+## Prepare Test Data
+```{r}
+remit_test_clean <- remit_test |>
+  arrange(across(contains("country")), year) |>
+  group_by(across(contains("country"))) |>
+  mutate(
+    gdp_lag = lag(gdp_per),
+    deportations_lag = lag(deportations)
+  ) |>
+  ungroup() |>
+  select(remittances_gdp, stock, gdp_per, unemployment, dist_cap, 
+         terror, deportations, internet, inflation, gdp_lag, deportations_lag) |>
+  drop_na()
+```
+
+## Fit and Evaluate Final Model
+```{r}
+## Create split object for last_fit()
+remit_combined <- bind_rows(remit_train_clean, remit_test_clean)
+remit_split_obj <- make_splits(
+  x = list(
+    analysis = seq_len(nrow(remit_train_clean)),
+    assessment = seq_len(nrow(remit_test_clean)) + nrow(remit_train_clean)
+  ),
+  data = remit_combined
+)
+
+## Fit on training, evaluate on test
+final_fit <- final_knn_wf |> last_fit(remit_split_obj)
+```
+
+## Final Results
+```{r}
+final_fit |> collect_metrics()
+```
+
+---
+
+
