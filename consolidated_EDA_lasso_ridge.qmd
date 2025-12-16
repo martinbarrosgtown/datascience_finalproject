@@ -1245,7 +1245,7 @@ rf_wf <- workflow() |>
 
 ## Finalize parameters
 rf_params <- parameters(rf_mod) 
-rf_params <- finalize(rf_params, remit_train) 
+rf_params <- finalize(rf_params, remit_train_clean) 
 
 rf_params
 
