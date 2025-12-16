@@ -1042,6 +1042,8 @@ remit_folds <- vfold_cv(data = remit_train, v = 10, repeats = 5)
 recipe_baseline <- 
   recipe(remittances_gdp ~ stock + gdp_per + unemployment + dist_cap + terror + deportations + internet + inflation,
   data = remit_train) |>
+step_impute_median(all_numeric_predictors()) |>
+step_impute_mode(all_nominal_predictors())|>
 step_mutate(
   gdp_lag = lag(gdp_per), 
   unemp_lag = lag(unemployment)) |>
@@ -1051,8 +1053,6 @@ step_normalize(all_numeric_predictors())
 
 ## Processing the full training data using parameter specification. 
 bake(prep(recipe_baseline, training = remit_train), new_data = remit_train)
-
-
 ```
 
 ```{r}
@@ -1069,6 +1069,9 @@ lm_workflow <- workflow() |>
 ## Fit model
 lm_results <- lm_workflow |>
   fit_resamples(resamples = remit_folds)
+
+## Collect RMSE
+collect_metrics(lm_results)
 ```
 
 # STEP 10: Test models (Martin: RIDGE, LASSO)
@@ -1190,6 +1193,21 @@ tidy(lasso_fit) %>%
 
 ```
 
+## Calculating the RMSE 
+```{r}
+# RMSE comparison
+bind_rows(
+  collect_metrics(ridge_res) |>
+    filter(.metric == "rmse") |>
+    inner_join(best_ridge, by = "penalty") |>
+    mutate(model = "ridge"),
+  collect_metrics(lasso_res) |>
+    filter(.metric == "rmse") |>
+    inner_join(best_lasso, by = "penalty") |>
+    mutate(model = "lasso")
+) |>
+  select(model, penalty, mean, std_err)
+```
 # Comment
 
 Cross-validation selected a non-zero penalty for the LASSO model, indicating that it improves predictive performance. The LASSO regularization path shows a small set of predictors entering the model as the penalty decreases, highlighting its role as a variable selection method.
@@ -1269,6 +1287,9 @@ rf_tuned |>
   show_best(metric = "rmse", n = 10)
 
 ## selecting the best specification and fit it to the full training data. 
+best_rf <-rf_tuned |>
+  select_best(metric = "rmse")
+
 final_rf_wf <- rf_wf |> 
   finalize_workflow(best_rf)
 
