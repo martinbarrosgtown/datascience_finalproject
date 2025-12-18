@@ -30,9 +30,12 @@ options(scipen = 999)
 
 ## Load the Data
 
+Filler out Missing Values in our key predicted outcome as this will cause our predicted models to fail, it provides no addtiaional data to our model. However for missingness in our predictors, imputation will help ensure non-systemic missingness adversely effects the sample size of our model.
+
 ```{r message=FALSE, warning=FALSE}
 ## Read in the CSV file
-remittances <- read_csv("remittances.csv")
+remittances <- read_csv("remittances.csv") |>
+  filter(!is.na(remittances_gdp)
 ```
 
 ## Create Training and Testing Splits
@@ -73,7 +76,7 @@ summary(remit_train)
 Key observations:
 
 -   Years range from 1994 to 2024 (30 years of data)
--   Remittances range from \$11,470 to \$137.7 billion
+-   Remittances range from \$11,470 to \$137.7 billion per county.
 
 ## Check Internal Structure
 
@@ -133,9 +136,9 @@ remit_train |>
 
 **Major findings:**
 
--   **poverty**: 64.3% missing
--   **stock**: 49.8% missing
--   **remittances**: 15.8% missing
+-   **poverty**: 64 % missing
+-   **stock**:49.82.8% missing
+-   **remittances**: % missing
 -   **remittances_gdp**: 16.3% missing
 
 ------------------------------------------------------------------------
@@ -1432,7 +1435,7 @@ tibble(
 
 ## 10.8 Test the Best Model on New Data
 
-The best model is **Random Forest** (lowest error: 3.08). Now we test it on completely new data.
+The best model is **Random Forest** (lowest error: 3.06). Now we test it on completely new data.
 
 ```{r}
 ## Create new split for Random Forest (uses clean data)
@@ -1445,8 +1448,8 @@ test_results <- final_rf_wf |> last_fit(rf_split)
 ## Show results
 test_results |> collect_metrics()
 ```
-On average, predictions are off by 2.52 percentage points.
-The model explains 86% of the variation in remittances
+
+On average, predictions are off by 2.53 percentage points. The model explains 86% of the variation in remittances
 
 ```{r}
 ## Visualize: Actual vs Predicted
