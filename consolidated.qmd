@@ -1090,8 +1090,70 @@ Establishes a baseline performance using ordinary least squares regression with 
 
 ------------------------------------------------------------------------
 
-## 10.2 Prepare Enhanced Recipe for Regularized Models
+## STEP 10: Model Comparison and Evaluation
 
+In this section, we compare five different regression models to predict remittances as a percentage of GDP.
+
+------------------------------------------------------------------------
+
+## 10.1 Data Preparation for Modeling
+
+### Remove Missing Values in Target Variable
+```{r}
+## Linear model
+lm_baseline <- linear_reg() |>
+  set_mode(mode = "regression") |>
+  set_engine(engine = "lm")
+
+## Create workflow
+lm_workflow <- workflow() |>
+  add_recipe(recipe_baseline) |>
+  add_model(lm_baseline)
+
+## Fit model
+lm_results <- lm_workflow |>
+  fit_resamples(resamples = remit_folds)
+
+## Collect RMSE
+collect_metrics(lm_results)
+```
+
+Establishes a baseline performance using ordinary least squares regression with no regularization. This gives us a benchmark to compare other models against.
+
+------------------------------------------------------------------------
+## STEP 10: Model Comparison and Evaluation
+
+In this section, we compare five different regression models to predict remittances as a percentage of GDP.
+
+------------------------------------------------------------------------
+
+## 10.1 Data Preparation for Modeling
+
+### Remove Missing Values in Target Variable
+```{r}
+## Linear model
+lm_baseline <- linear_reg() |>
+  set_mode(mode = "regression") |>
+  set_engine(engine = "lm")
+
+## Create workflow
+lm_workflow <- workflow() |>
+  add_recipe(recipe_baseline) |>
+  add_model(lm_baseline)
+
+## Fit model
+lm_results <- lm_workflow |>
+  fit_resamples(resamples = remit_folds)
+
+## Collect RMSE
+collect_metrics(lm_results)
+```
+
+Establishes a baseline performance using ordinary least squares regression with no regularization. This gives us a benchmark to compare other models against.
+
+------------------------------------------------------------------------
+
+## 10.2 Prepare Enhanced Recipe for Regularized Models
 ```{r}
 library(tidymodels)
 library(glmnet)
@@ -1129,7 +1191,6 @@ Creates a specialized recipe for Ridge and LASSO models. The glmnet engine requi
 ## 10.3 Model 1: Ridge Regression
 
 Apply L2 regularization to shrink coefficients and reduce overfitting while keeping all predictors in the model.
-
 ```{r}
 #this defines ridge regression with a tuned penalty.
 ridge_spec <- linear_reg(penalty = tune(), mixture = 0) %>%
@@ -1177,7 +1238,6 @@ Ridge didn't improve performance because the dataset doesn't suffer from severe 
 ## 10.4 Model 2: LASSO Regression
 
 The objetive is to apply L1 regularization for both coefficient shrinkage and variable selection. Unlike Ridge, LASSO can set some coefficients to exactly zero, effectively removing predictors.
-
 ```{r}
 
 # we specify the LASSO model
@@ -1229,7 +1289,6 @@ LASSO found value in regularization. It successfully identified the most predict
 ------------------------------------------------------------------------
 
 ## 10.5 Compare Ridge vs LASSO Performance
-
 ```{r}
 # RMSE comparison
 bind_rows(
@@ -1254,7 +1313,6 @@ Direct comparison of Ridge and LASSO at their optimal penalty values. We can see
 Use an ensemble of decision trees to capture non-linear relationships and interactions between predictors without assuming a specific functional form.
 
 Random Forest creates multiple decision trees using random subsets of data and predictors. It uses two key hyperparameters: `mtry` (number of predictors considered at each split) and `min_n` (minimum observations needed to split a node). Final prediction is the average across all trees.
-
 ```{r}
 library(vip)
 # For missingness inside the dependent variable 
@@ -1337,7 +1395,7 @@ final_rf_fit |>
 
 Uses 5-fold CV instead of 10-fold for computational efficiency (Random Forests are intensive) - Tests 20 different combinations of hyperparameters (trees, mtry, min_n) using maximum entropy design - Selects the best combination based on lowest RMSE - Generates a variable importance plot showing which predictors contribute most to reducing prediction error
 
-**I**The variable importance plot reveals which features drive remittance predictions in this non-linear model. Predictors at the top have the strongest influence.
+The variable importance plot reveals which features drive remittance predictions in this non-linear model. Predictors at the top have the strongest influence.
 
 ------------------------------------------------------------------------
 
@@ -1350,7 +1408,6 @@ For each observation, finds the K closest observations in feature space (measure
 KNN requires normalized features since it's distance-based. All predictors must be on the same scale.
 
 ### Data Preparation
-
 ```{r}
 ## Create lagged variables by country
 remit_train_lagged <- remit_train |>
@@ -1363,7 +1420,7 @@ remit_train_lagged <- remit_train |>
   ungroup()
 
 ## Remove missing values
-remit_train_clean <- remit_train_lagged |>
+remit_train_clean_knn <- remit_train_lagged |>
   select(remittances_gdp, stock, gdp_per, unemployment, dist_cap, 
          terror, deportations, internet, inflation, gdp_lag, deportations_lag) |>
   drop_na()
@@ -1372,20 +1429,18 @@ remit_train_clean <- remit_train_lagged |>
 Creates lagged variables respecting country groupings (can't use one country's previous year to predict another country's current year), then removes any remaining missing values.
 
 ### Cross-Validation Setup
-
 ```{r}
 set.seed(20251211)
-remit_folds <- vfold_cv(data = remit_train_clean, v = 10, repeats = 5)
+knn_folds <- vfold_cv(data = remit_train_clean_knn, v = 10, repeats = 5)
 ```
 
 Creates 10-fold CV with 5 repeats (50 total model fits) for robust RMSE estimates.
 
 ### Model Setup
-
 ```{r}
 ## Recipe: log transform and normalize
 recipe_knn <- 
-  recipe(remittances_gdp ~ ., data = remit_train_clean) |>
+  recipe(remittances_gdp ~ ., data = remit_train_clean_knn) |>
   step_mutate(gdp_per = log(gdp_per + 1)) |>
   step_normalize(all_numeric_predictors())
 
@@ -1408,104 +1463,47 @@ knn_workflow <-
 Sets up KNN to test 10 different K values ranging from 1 to 99. Small K = flexible but may overfit. Large K = smooth but may underfit.
 
 ### Hyperparameter Tuning
-
 ```{r}
 knn_results <- 
   knn_workflow |>
   tune_grid(
-    resamples = remit_folds,
+    resamples = knn_folds,
     grid = knn_grid,
-    metrics = metric_set(rmse)
+    metrics = metric_set(rmse, rsq)
   )
 ```
 
 Tests each K value across all cross-validation folds to find optimal number of neighbors.
 
 ### Tuning Results
-
 ```{r}
 knn_results |> collect_metrics()
 ```
-
 ```{r}
 knn_results |> show_best(metric = "rmse")
 ```
-
 ```{r}
 knn_results |> autoplot()
 ```
 
-Full results for all K values tested - Top 5 best-performing K values - V
-
-isual plot showing how RMSE changes with K (helps identify optimal flexibility)
+Full results for all K values tested - Top 5 best-performing K values - Visual plot showing how RMSE changes with K (helps identify optimal flexibility)
 
 ### Select Best Model
-
 ```{r}
 best_k <- select_best(knn_results, metric = "rmse")
 final_knn_wf <- knn_workflow |> finalize_workflow(best_k)
 ```
 
-**What this does:** Selects the K value with lowest cross-validated RMSE and finalizes the workflow.
+Selects the K value with lowest cross-validated RMSE and finalizes the workflow.
 
-Now we evaluate our best KNN model on the held-out test set to get an unbiased estimate of performance on new data.
+------------------------------------------------------------------------
 
-### Prepare Test Data
-
+## 10.8 Model Comparison Using Cross-Validation
 ```{r}
-remit_test_clean <- remit_test |>
-  arrange(across(contains("country")), year) |>
-  group_by(across(contains("country"))) |>
-  mutate(
-    gdp_lag = lag(gdp_per),
-    deportations_lag = lag(deportations)
-  ) |>
-  ungroup() |>
-  select(remittances_gdp, stock, gdp_per, unemployment, dist_cap, 
-         terror, deportations, internet, inflation, gdp_lag, deportations_lag) |>
-  drop_na()
-```
-
-Applies the exact same transformations to test data as training data (lagged variables, variable selection, remove NAs).
-
-### Fit and Evaluate Final Model
-
-```{r}
-## Create split object for last_fit()
-remit_combined <- bind_rows(remit_train_clean, remit_test_clean)
-remit_split_obj <- make_splits(
-  x = list(
-    analysis = seq_len(nrow(remit_train_clean)),
-    assessment = seq_len(nrow(remit_test_clean)) + nrow(remit_train_clean)
-  ),
-  data = remit_combined
-)
-
-## Fit on training, evaluate on test
-final_fit <- final_knn_wf |> last_fit(remit_split_obj)
-```
-
-Creates a proper train/test split object that trains the model on training data and evaluates on test data, ensuring no data leakage.
-
-### Final Results
-
-```{r}
-final_fit |> collect_metrics()
-```
-
-KNN predicts a country's remittances by finding the 11 most similar country-years in the data and averaging their remittance values.
-
-We tested different numbers of neighbors (K) and found that using 11 neighbors works best.
-
-The model performs well with an R² of 0.82, meaning it correctly predicts about 82% of the variation in remittances.
-
-On average, the model's predictions are off by about 2.6 percentage points of GDP.
-
-## Fixed Model Comparison
-```{r}
-tibble(
+## Compare all models using CV metrics only
+model_comparison <- tibble(
   Model = c("OLS", "Ridge", "LASSO", "Random Forest", "KNN"),
-  RMSE = c(
+  CV_RMSE = c(
     # OLS
     collect_metrics(lm_results) |> 
       filter(.metric == "rmse") |> 
@@ -1534,6 +1532,109 @@ tibble(
       filter(.metric == "rmse") |> 
       slice_min(mean, n = 1) |> 
       pull(mean)
+  ),
+  CV_RSQ = c(
+    # OLS
+    collect_metrics(lm_results) |> 
+      filter(.metric == "rsq") |> 
+      pull(mean),
+    
+    # Ridge
+    collect_metrics(ridge_res) |> 
+      filter(.metric == "rsq") |> 
+      inner_join(best_ridge, by = "penalty") |> 
+      pull(mean),
+    
+    # LASSO
+    collect_metrics(lasso_res) |> 
+      filter(.metric == "rsq") |> 
+      inner_join(best_lasso, by = "penalty") |> 
+      pull(mean),
+    
+    # Random Forest
+    collect_metrics(rf_tuned) |> 
+      filter(.metric == "rsq") |> 
+      slice_max(mean, n = 1) |> 
+      pull(mean),
+    
+    # KNN
+    collect_metrics(knn_results) |> 
+      filter(.metric == "rsq") |> 
+      slice_max(mean, n = 1) |> 
+      pull(mean)
   )
 ) |> 
-  arrange(RMSE)
+  arrange(CV_RMSE) |>
+  mutate(
+    CV_RMSE = round(CV_RMSE, 3),
+    CV_RSQ = round(CV_RSQ, 3)
+  )
+
+model_comparison
+```
+
+This table compares all five models using **cross-validation metrics only**. The model with the lowest CV_RMSE performed best during training.
+
+------------------------------------------------------------------------
+
+## 10.9 Final Model Evaluation on Test Set
+
+Based on cross-validation results, we now evaluate the best model on the held-out test set.
+```{r}
+## Identify the winner
+best_model_name <- model_comparison |> 
+  slice(1) |> 
+  pull(Model)
+
+
+## Select the appropriate workflow
+best_workflow <- case_when(
+  best_model_name == "OLS" ~ lm_workflow,
+  best_model_name == "Ridge" ~ final_ridge_wf,
+  best_model_name == "LASSO" ~ final_lasso_wf,
+  best_model_name == "Random Forest" ~ final_rf_wf,
+  best_model_name == "KNN" ~ final_knn_wf
+)
+
+## Evaluate ONLY the best model on test set using original split
+final_test_results <- best_workflow |> 
+  last_fit(remit_split)
+
+## Test set performance
+final_test_results |> 
+  collect_metrics()
+```
+
+### Visualize Test Set Performance
+```{r}
+## Predictions vs Actual
+final_test_results |>
+  collect_predictions() |>
+  ggplot(aes(x = remittances_gdp, y = .pred)) +
+  geom_point(alpha = 0.5, color = "steelblue") +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "red") +
+  labs(
+    title = paste("Test Set Performance:", best_model_name),
+    subtitle = "Points closer to diagonal line = better predictions",
+    x = "Actual Remittances (% GDP)",
+    y = "Predicted Remittances (% GDP)"
+  ) +
+  theme_minimal()
+```
+
+### Model Performance Summary
+```{r}
+## Compare CV vs Test performance
+tibble(
+  Model = best_model_name,
+  CV_RMSE = model_comparison |> slice(1) |> pull(CV_RMSE),
+  Test_RMSE = final_test_results |> collect_metrics() |> 
+    filter(.metric == "rmse") |> pull(.estimate),
+  CV_RSQ = model_comparison |> slice(1) |> pull(CV_RSQ),
+  Test_RSQ = final_test_results |> collect_metrics() |> 
+    filter(.metric == "rsq") |> pull(.estimate)
+) |>
+  mutate(across(where(is.numeric), ~round(., 3)))
+```
+
+This final table shows how our chosen model performs on completely unseen test data, confirming whether the cross-validation estimates were accurate.
