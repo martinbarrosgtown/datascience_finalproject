@@ -34,8 +34,8 @@ Filler out Missing Values in our key predicted outcome as this will cause our pr
 
 ```{r message=FALSE, warning=FALSE}
 ## Read in the CSV file
-remittances <- read_csv("remittances.csv") |>
-  filter(!is.na(remittances_gdp)
+remittances <- read_csv("../data/remittances.csv") |>
+  filter(!is.na(remittances_gdp))
 ```
 
 ## Create Training and Testing Splits
