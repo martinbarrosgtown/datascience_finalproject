@@ -99,7 +99,7 @@ There are some issues with missing data, especially for Poverty and Migrant stoc
 
 ## Key Findings
 
-1.  The KNN model achieved the lowest prediction error (RMSE = 2.53) and explains ~75% of variation in remittances
+1.  The KNN model achieved the lowest prediction error (RMSE = 3.05) and explains ~75% of variation in remittances
 2.  Distance, GDP per capita, and Unemployment were the strongest predictors
 3.  Remittances represent a larger share of GDP in lower-income countries, displaying a negative correlation with GDP per capita
 4.  Utilizing lagged effects for GDP and deportations improves model performance, suggesting there is a delayed impact of these variables on remittance flows
