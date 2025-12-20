@@ -33,9 +33,16 @@ options(scipen = 999)
 Filler out Missing Values in our key predicted outcome as this will cause our predicted models to fail, it provides no additional data to our model. However, for missingness in our predictors, imputation will help ensure non-systemic missingness adversely affect the sample size of our model.
 
 ```{r message=FALSE, warning=FALSE}
-## Read in the CSV file
-remittances <- read_csv("../data/remittances.csv") |>
-  filter(!is.na(remittances_gdp))
+## Read in the CSV file and create lagged variables before splitting (to avoid data data leakage)
+remittances <- read_csv("remittances.csv") |>
+  filter(!is.na(remittances_gdp)) |>
+  arrange(country_name, year) |>
+  group_by(country_name) |>
+  mutate(
+    gdp_lag = lag(gdp_per),
+    deportations_lag = lag(deportations)
+  ) |>
+  ungroup()
 ```
 
 ## Create Training and Testing Splits
@@ -1043,15 +1050,13 @@ remit_folds <- vfold_cv(data = remit_train, v = 10, repeats = 5)
 ```{r}
 ## Recipe (baseline model)
 recipe_baseline <- 
-  recipe(remittances_gdp ~ stock + gdp_per + unemployment + dist_cap + terror + deportations + internet + inflation,
+  recipe(remittances_gdp ~ stock + gdp_per + gdp_lag + unemployment + 
+         dist_cap + terror + deportations + deportations_lag + 
+         internet + inflation,
   data = remit_train) |>
 step_impute_median(all_numeric_predictors()) |>
-step_impute_mode(all_nominal_predictors())|>
-step_mutate(
-  gdp_lag = lag(gdp_per), 
-  unemp_lag = lag(unemployment)) |>
-step_mutate(
-    gdp_per = log(gdp_per + 1)) |>
+step_impute_mode(all_nominal_predictors()) |>
+step_mutate(gdp_per = log(gdp_per + 1)) |>
 step_normalize(all_numeric_predictors())
 
 ## Processing the full training data using parameter specification. 
@@ -1254,14 +1259,14 @@ rf_folds <- vfold_cv(remit_train_clean, v = 5)
 
 ## Given the high degree of missingness a recipe that accounts for nas will avoid it from breaking down using median imputation. 
 recipe_alt <- 
-  recipe(remittances_gdp ~ stock + gdp_per + unemployment + dist_cap + terror + deportations + internet + inflation + country_name,
+  recipe(remittances_gdp ~ stock + gdp_per + gdp_lag + unemployment + 
+         dist_cap + terror + deportations + deportations_lag + 
+         internet + inflation + country_name,
   data = remit_train_clean) |>
 update_role(country_name, new_role = "id") |>
 step_impute_median(all_numeric_predictors()) |>
-step_lag(gdp_per, unemployment, lag = 1) |>
-step_mutate(
-    gdp_per = log(gdp_per + 1)) |>
-step_normalize(all_numeric_predictors()) 
+step_mutate(gdp_per = log(gdp_per + 1)) |>
+step_normalize(all_numeric_predictors())
 
 bake(prep(recipe_alt, training = remit_train_clean), new_data = remit_train_clean)
 
