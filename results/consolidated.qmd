@@ -33,10 +33,10 @@ options(scipen = 999)
 Filler out Missing Values in our key predicted outcome as this will cause our predicted models to fail, it provides no additional data to our model. However, for missingness in our predictors, imputation will help ensure non-systemic missingness adversely affect the sample size of our model.
 
 ```{r message=FALSE, warning=FALSE}
-## Read in the CSV file and create lagged variables before splitting (to avoid data data leakage)
 remittances <- read_csv("remittances.csv") |>
+  clean_names() |>  # ← Add this line to clean column names FIRST
   filter(!is.na(remittances_gdp)) |>
-  arrange(country_name, year) |>
+  arrange(country_name, year) |> 
   group_by(country_name) |>
   mutate(
     gdp_lag = lag(gdp_per),
