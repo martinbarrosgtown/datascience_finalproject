@@ -8,7 +8,8 @@ This project analyzes the determinants of international remittances as a percent
 
 ## Project File Directory
 
--   [Motivating the Problem](https://github.com/martinbarrosgtown/datascience_finalproject.github.io/blob/main/analysis/motivation.html)
+
+-   [Motivating the Problem](https://martinbarrosgtown.github.io/datascience_finalproject.github.io/analysis/motivation.html)
 
 -   [Proposing the Solution](https://github.com/martinbarrosgtown/datascience_finalproject/blob/main/analysis/proposal.html)
 
