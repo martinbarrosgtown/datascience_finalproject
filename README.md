@@ -47,13 +47,13 @@ What factors best predict remittances as a share of GDP, and how do these relati
 -   dplyr
 -   vip
 -   reshape2
--   ...
 
 ## Data
 
-Data was pulled from various sources to build this dataset: *include names/links of sources*
+Data was pulled from the World Bank Development Indicators to build this dataset, accessed here: https://databank.worldbank.org/source/world-development-indicators 
 
-Countries covered: 158 Time period: 1994-2024 (30 years) Number of observations: 3,918 (in training dataset)
+Countries covered: 150 
+Time period: 1994-2024 (30 years) Number of observations: 3,918 (in training dataset)
 
 Key outcome: Remittances as a % of GDP Predictors used: Migrant stock, GDP per capita, unemployment, deportations, internet accss, inflation, terrorism index, distance between capital cities, poverty rate
 
@@ -61,7 +61,7 @@ There are some issues with missing data, especially for Poverty and Migrant stoc
 
 ## Methods and Process
 
-## Step 1: Data Overview Preparation
+## Step 1: Data Set Up
 
 -   Loaded remittances data
 -   Removed missing observations
@@ -72,23 +72,18 @@ There are some issues with missing data, especially for Poverty and Migrant stoc
 -   Examined distribution of variables
 -   Identified skewed variables (remittances, GDP)
 -   Applied log transformations to normalize distributions
--   Analyzed correlations between predctors
-
-## Step 3: Feature Engineering
-
+-   Analyzed correlations between predictors
 -   Created lagged variables
 -   Log-transformed GDP per capita
 -   Normalized numeric predictors
+-   Handled missing data and imputation
 
-## Step 4: Missing Data
-
--   Imputed missing values using median for numeric predictors
-
-## Step 5: Cross-validation Setup
+## Step 3: Model Development
 
 -   Created 10-fold cross-validation with 5 repetitions, ensuring no data leakage
-
-## Step 6: Model Training & Tuning
+-   Created baseline recipe
+  
+## Step 4: Model Comparison and Selection
 
 -   Looked at 5 models:
     -   Linear regression (no tuning)
@@ -97,19 +92,15 @@ There are some issues with missing data, especially for Poverty and Migrant stoc
     -   Random Forest: 20 combinations
     -   KNN: turned number of neighbors from 1-99
 
-## Step 7: Model Evaluation and Selection
+## Step 5: Final Model Evaluation
 
 -   Calculated RMSE for each model in order to select the best one
--   Fit final model on full training data
-
-## Step 8: Final Model
-
--   Fit final model on testing data
+-   Fit final model
 
 ## Key Findings
 
-1.  The Random Forest model achieved the lowest prediction error (RMSE = 2.53) and explains 86% of variation in remittances
-2.  X, Y, and Z were the strongest predictors
+1.  The KNN model achieved the lowest prediction error (RMSE = 2.53) and explains ~75% of variation in remittances
+2.  Distance, GDP per capita, and Unemployment were the strongest predictors
 3.  Remittances represent a larger share of GDP in lower-income countries, displaying a negative correlation with GDP per capita
 4.  Utilizing lagged effects for GDP and deportations improves model performance, suggesting there is a delayed impact of these variables on remittance flows
 
