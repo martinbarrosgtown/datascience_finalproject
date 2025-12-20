@@ -854,6 +854,9 @@ It is likely that past changes to country of origin conditions is likely to be m
 
 These lagged effect would seem to be the most plausible with GDP, unemployment, terror, deportations, and changes in migrant stock (inward migration)
 
+# NOTE: This section is for EXPLORATION only
+## The actual lagged variables used in all models were created 
+## at the data loading stage (before train/test split)
 ```{r}
 ## Lagged (1 year)
 remit_lag <- remit_train |>
