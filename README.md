@@ -11,15 +11,14 @@ This project analyzes the determinants of international remittances as a percent
 
 -   [Motivating the Problem](https://martinbarrosgtown.github.io/datascience_finalproject.github.io/analysis/motivation.html)
 
--   [Proposing the Solution](https://github.com/martinbarrosgtown/datascience_finalproject/blob/main/analysis/proposal.html)
+-   [Proposing the Solution](https://martinbarrosgtown.github.io/datascience_finalproject.github.io/analysis/proposal.html)
 
--   [Data Set Construction](https://github.com/martinbarrosgtown/datascience_finalproject/blob/main/data/dataset_construction.html)
+-   [Data Set Construction](https://martinbarrosgtown.github.io/datascience_finalproject.github.io/data/dataset_construction.html)
 
--   [Data Visualization and Initial Model Set Up](https://github.com/martinbarrosgtown/datascience_finalproject/blob/main/analysis/dataviz.html)
+-   [Data Visualization and Initial Model Set Up](https://martinbarrosgtown.github.io/datascience_finalproject.github.io/analysis/dataviz.html)
 
--   [Model Construction and Implementation](https://github.com/martinbarrosgtown/datascience_finalproject/blob/main/analysis/model.html)
+-   [Model Construction/ Implementation/ Evaluation](https://martinbarrosgtown.github.io/datascience_finalproject.github.io/analysis/model.html)
 
--   Model Evaluation
 
 ## Research Question
 
