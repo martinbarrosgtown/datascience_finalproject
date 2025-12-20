@@ -1,11 +1,19 @@
 ---
-title: "Data Cleaning"
-author: Miguel Villa
-format: html
+title: "Intro to Data Science Final Project"
+author: "Cova, Langbehn, Villa & Barros" 
+format: 
+  html:
+    toc: true
+    toc-depth: 3
+    code-fold: true
+    embed-resources: true
+    theme: cosmo
 editor: visual
 ---
 
 # Generating and Cleaning Data Set
+
+------------------------------------------------------------------------
 
 Note: You won't find the split or anything like that here! This is just where we did all the merging and cleaning.
 
@@ -13,7 +21,7 @@ This is basically Step 1 in our modelling pipeline
 
 ## Load Relevant Libraries
 
-```{r}
+```{r message=FALSE, warning=FALSE}
 library(tidyverse)
 library(readxl)
 library(ipumsr)
@@ -25,9 +33,9 @@ library(tibble)
 
 ## Opening all relevant predictors
 
-```{r}
+```{r message=FALSE, warning=FALSE}
 ## Opening Total Remittance Receipt Data
-remittances <- read_excel("remittances received.xlsx") ## this will have a different name once we have a directory
+remittances <- read_excel("../../remittances received.xlsx") ## this will have a different name once we have a directory
 
 remittances <- remittances |>
   pivot_longer(
@@ -41,7 +49,7 @@ remittances <- remittances |>
   select(- `Indicator Name`)
 
 ## Opening Remittance as percent of GDP Data
-remittances_gdp <- read_excel("remittances gdp.xlsx") 
+remittances_gdp <- read_excel("../../remittances gdp.xlsx") 
 
 remittances_gdp <- remittances_gdp |>
   pivot_longer(
@@ -54,7 +62,7 @@ remittances_gdp <- remittances_gdp |>
   rename(remittances_gdp = value) 
 
 ## Opening GDP - Current USD Info
-gdp <- read_excel("gdp_currentusd.xlsx") 
+gdp <- read_excel("../../gdp_currentusd.xlsx") 
 
 gdp <- gdp |>
   pivot_longer(
@@ -67,7 +75,7 @@ gdp <- gdp |>
   rename(gdp = value) 
 
 ## Opening Unemployment as % of total labor force
-unemployment <- read_csv("unemployment.csv")
+unemployment <- read_csv("../../unemployment.csv")
 unemployment <- unemployment |>
   pivot_longer(
     cols = `1994`:`2024`, 
@@ -79,7 +87,7 @@ unemployment <- unemployment |>
   rename(unemployment = value) 
 
 ## GDP Per Capita 
-gdp_per <- read_csv("gdp_per.csv")
+gdp_per <- read_csv("../../gdp_per.csv")
 gdp_per <- gdp_per |>
   pivot_longer(
     cols = `1994`:`2024`, 
@@ -91,7 +99,7 @@ gdp_per <- gdp_per |>
   rename(gdp_per = value) 
 
 ## Inflation as measured by the annual growth rate of the GDP implicit deflator.
-inflation <- read_csv("inflation.csv")
+inflation <- read_csv("../../inflation.csv")
 inflation <- inflation |>
   pivot_longer(
     cols = `1994`:`2024`, 
@@ -103,7 +111,7 @@ inflation <- inflation |>
   rename(inflation = value) 
 
 ## vulnerable employment as % of total employment. 
-vulnerable_emp <- read_csv("vulnerable_emp.csv")
+vulnerable_emp <- read_csv("../../vulnerable_emp.csv")
 vulnerable_emp <- vulnerable_emp |>
   pivot_longer(
     cols = `1994`:`2024`, 
@@ -115,7 +123,7 @@ vulnerable_emp <- vulnerable_emp |>
   rename(vulnerable_emp = value) 
 
 ## Maternal Mortality
-maternal_mortality <- read_csv("maternal_mortality.csv")
+maternal_mortality <- read_csv("../../maternal_mortality.csv")
 maternal_mortality <- maternal_mortality |>
   pivot_longer(
     cols = `1994`:`2024`, 
@@ -127,7 +135,7 @@ maternal_mortality <- maternal_mortality |>
   rename(maternal_mortality = value) 
 
 ## Official exchange rate relative to United State Dollars from Local Currency Units. 
-exchange_rate <- read_csv("exchange_rate.csv")
+exchange_rate <- read_csv("../../exchange_rate.csv")
 exchange_rate <- exchange_rate |>
   pivot_longer(
     cols = `1994`:`2024`, 
@@ -139,7 +147,7 @@ exchange_rate <- exchange_rate |>
   rename(exchange_rate = value) 
 
 ## Deportations or Removal Orders from Trac data
-deportations <- read_csv("deportations.csv")
+deportations <- read_csv("../../deportations.csv")
 deportations <- deportations |>
   pivot_longer(
     cols = `1998`:`2025`, 
@@ -151,7 +159,7 @@ deportations <- deportations |>
   rename(deportations = value, `Country Name` = Country) 
 
 ## Percent of Population with access to internet
-internet <- read_csv("internet.csv")
+internet <- read_csv("../../internet.csv")
 internet <- internet |>
   pivot_longer(
     cols = `1994`:`2024`, 
@@ -163,7 +171,7 @@ internet <- internet |>
   rename(internet = value) 
 
 ## Percent of Population earning less than $3 a day. Living in poverty
-poverty <- read_csv("poverty.csv")
+poverty <- read_csv("../../poverty.csv")
 poverty <- poverty |>
   pivot_longer(
     cols = `1994`:`2024`, 
@@ -175,7 +183,7 @@ poverty <- poverty |>
   rename(poverty = value) 
 
 ## Distance between most populous city in the us and origin country
-dist_pop <- read_csv("dist_pop.csv")
+dist_pop <- read_csv("../../dist_pop.csv")
 dist_pop <- dist_pop |>
   pivot_longer(
     cols = `1994`:`2024`, 
@@ -187,7 +195,7 @@ dist_pop <- dist_pop |>
   rename(dist_pop = value) 
 
 ## Distance between capital city in the us and origin country
-dist_cap <- read_csv("dist_cap.csv")
+dist_cap <- read_csv("../../dist_cap.csv")
 dist_cap <- dist_cap |>
   pivot_longer(
     cols = `1994`:`2024`, 
@@ -199,7 +207,7 @@ dist_cap <- dist_cap |>
   rename(dist_cap = value) 
 
 ## Political terror as measured by the us department of state on a scale from 1 - 5 
-terror <- read_csv("terror.csv")
+terror <- read_csv("../../terror.csv")
 terror <- terror |>
   mutate(year = as.integer(Year), Year = NULL) |>
 rename(terror = `political_terror_scale (measured on a 5 point ordinal scale by US State Department)`)
@@ -390,7 +398,7 @@ bpl_lookup <- tribble(
 
 ```{r}
 ## Method 1: adding in Migrant Stock of the US by CPS yearly. Only started in 1994.
-ddi <- read_ipums_ddi("cps_00012.xml")
+ddi <- read_ipums_ddi("../../cps_00012.xml")
 cps <- read_ipums_micro(ddi)
 
 ## Attach proper country names to their codes, and generate sums of country of origin for (foreign born) migrants. 
