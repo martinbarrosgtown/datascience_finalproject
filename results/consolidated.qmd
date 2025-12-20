@@ -1,5 +1,5 @@
 ---
-title: "Remittances Data - Exploratory Data Analysis Consolidated"
+title: "Remittances Data - Exploratory Data, Model Construction, and Evaluation Final"
 author: "Cova, Langbehn, Villa & Barros" 
 format: 
   html:
@@ -40,7 +40,7 @@ Filter out missing values in our key predicted outcome as this will cause our pr
 ("../data/remittances.csv") \|\>
 
 ```{r message=FALSE, warning=FALSE}
-remittances <- read_csv("remittances.csv") |>
+remittances <- read_csv("../data/remittances.csv") |>
   clean_names() |>  
   filter(!is.na(remittances_gdp)) |>
   arrange(country_name, year) |> 
@@ -208,6 +208,7 @@ remit_train |>
     caption = "Source: World Bank Remittances Data (1994-2024)"
   )
 ```
+
 The histogram is heavily concentrated on the left with a long tail to the right. This is classic right-skewed data.
 
 Boxplot to Identify Outliers
@@ -223,6 +224,7 @@ remit_train |>
     caption = "Source: World Bank Remittances Data (1994-2024)"
   )
 ```
+
 Many points appear above the upper whisker (outliers). These are likely large countries like Mexico that receive billions in remittances.
 
 ### Examine GDP
@@ -257,6 +259,7 @@ GDP shows the same right-skewed pattern as remittances. Large economies have muc
 ### Examine Unemployment
 
 Summary Statistics for Unemployment
+
 ```{r}
 ## Get summary statistics
 summary(remit_train$unemployment)
@@ -265,6 +268,7 @@ summary(remit_train$unemployment)
 Unemployment ranges from 3.91% to 34.01%.
 
 Point Plot for Unemployment Distribution
+
 ```{r}
 remit_train |>
   ggplot(aes(unemployment, 1)) +
@@ -293,6 +297,7 @@ summary(remit_train$inflation)
 The maximum inflation is 2,240%! (outlier) Most inflation values are between 1.7% and 9%.
 
 Point Plot for Inflation Distribution
+
 ```{r}
 remit_train |>
   ggplot(aes(inflation, 1)) +
@@ -320,7 +325,7 @@ remit_train |>
   summarise(mean_remittances = mean(remittances, na.rm = TRUE))
 ```
 
-All remittances are positive. The mean is $2.65 billion.
+All remittances are positive. The mean is \$2.65 billion.
 
 ### Test 2: Are All Years in Valid Range?
 
@@ -344,7 +349,6 @@ remit_train |>
 ```
 
 All unemployment values are valid percentages (0-100%).
-
 
 ## 2.9 Log Transformations for Skewed Variables
 
@@ -373,6 +377,7 @@ summary(remit_train$log_remittances)
 ```
 
 Histogram of Log Remittances
+
 ```{r}
 remit_train |>
   filter(!is.na(log_remittances)) |>
@@ -390,6 +395,7 @@ remit_train |>
 The log-transformed remittances show a much more normal distribution compared to the original right-skewed data.
 
 Boxplot of Log Remittances
+
 ```{r}
 remit_train |>
   filter(!is.na(log_remittances)) |>
@@ -402,7 +408,6 @@ remit_train |>
     caption = "Source: World Bank Remittances Data (1994-2024)"
   )
 ```
-
 
 Fewer outliers visible after log transformation.
 
@@ -523,7 +528,6 @@ ggplot(remit_train, aes(x = deportations + 1, y = remittances + 1)) +
 ```
 
 -   On a log–log scale, deportations and remittances show a positive but noisy association, suggesting remittances tend to rise with deportations.
-
 
 ## 2.10 Categorical Variables Analysis
 
@@ -794,7 +798,6 @@ ggplot(melted_cor_log, aes(Var1, Var2, fill = value)) +
 -   Remittances are most strongly positively correlated with the stock of migrants (0.5), suggesting migrant presence is a key driver, while other macro variables show only weak associations.
 -   Remittances as % of GDP are negatively correlated with GDP per capita ( −0.49), indicating remittances matter more (relative to GDP) in poorer countries.
 
-
 ## 2.12 Time Trends Analysis
 
 ### Remittances Over Time
@@ -847,9 +850,7 @@ It is likely that past changes to country of origin conditions is likely to be m
 
 These lagged effect would seem to be the most plausible with GDP, unemployment, terror, deportations, and changes in migrant stock (inward migration)
 
-NOTE: This section is for EXPLORATION only
-The actual lagged variables used in all models were created
-at the data loading stage (before train/test split)
+NOTE: This section is for EXPLORATION only The actual lagged variables used in all models were created at the data loading stage (before train/test split)
 
 ```{r}
 ## Lagged (1 year)
@@ -1041,7 +1042,6 @@ Less Strong change and thus probably doesn't warrant inclusion.
 
 # STEP 3: Model Development
 
-
 ## 3.1 Cross-validation set up
 
 To improve the accuracy of our estimated error rates, we set up a 10-fold cross validation with 5 repetitions since we have a relatively small number of observations within the training data. We create a recipe for the baseline model and process the full training data using parameter specification.
@@ -1051,6 +1051,7 @@ remit_folds <- vfold_cv(data = remit_train, v = 10, repeats = 5)
 ```
 
 ## 3.2 Baseline Recipe
+
 ```{r}
 ## Recipe (baseline model)
 recipe_baseline <- 
@@ -1072,7 +1073,6 @@ bake(prep(recipe_baseline, training = remit_train), new_data = remit_train)
 # STEP 4: Model Comparison and Selection
 
 In this section, we compare five different regression models to predict remittances as a percentage of GDP.
-
 
 ## 4.1 OLS Baseline Model
 
@@ -1444,6 +1444,7 @@ tibble(
 The best model is **KNN** (lowest error: 3.05). Now we test it on completely new data.
 
 ## 5.1 Test the Best Model on New Data
+
 ```{r}
 ## Prepare test data
 remit_test_clean_knn <- remit_test |>
@@ -1471,6 +1472,7 @@ test_predictions <- final_knn_fit |>
 ```
 
 ## 5.2 Country-Specific Performance & Residual Analysis
+
 ```{r}
 ## Look at countries of interest
 countries_of_interest <- c(

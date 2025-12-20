@@ -13,10 +13,11 @@ editor: visual
 
 # Model Construction and Implementation
 
-------------------------------------------------------------------------
-Quitly load in libraries and data seen before (doesn't need to be loaded in twice in main reproducible doc)
+## Setup and Data Loading: Packages
+
+Repeat from earlier everything before step 3 is repeat.
+
 ```{r message=FALSE, warning=FALSE}
-## Load in packages 
 library(tidymodels)   
 library(tidyverse)   
 library(janitor)   
@@ -24,15 +25,39 @@ library(naniar)
 library(assertr)      
 library(corrplot)
 library(gridExtra)
+library(reshape2)
+library(glmnet)
+library(dplyr)
+library(vip)
+library(ggplot2)
 
 ## Turn off scientific notation for readable numbers
 options(scipen = 999)
+```
 
-## Read in the CSV file
+## 1.1 Load the Data
+
+Filter out missing values in our key predicted outcome as this will cause our predicted models to fail, it provides no additional data to our model. However, for missing values in our predictors, imputation will help ensure non-systemic missingness adversely affect the sample size of our model.
+
+("../data/remittances.csv") \|\>
+
+```{r message=FALSE, warning=FALSE}
 remittances <- read_csv("../data/remittances.csv") |>
-  filter(!is.na(remittances_gdp))
+  clean_names() |>  
+  filter(!is.na(remittances_gdp)) |>
+  arrange(country_name, year) |> 
+  group_by(country_name) |>
+  mutate(
+    gdp_lag = lag(gdp_per),
+    deportations_lag = lag(deportations)
+  ) |>
+  ungroup()
+```
 
-## Set seed for reproducibility 
+## 1.2 Create Training and Testing Splits
+
+```{r}
+## Set seed for reproducibility
 set.seed(20251211)
 
 ## Split data: 80% training, 20% testing
@@ -41,24 +66,32 @@ remit_train <- training(x = remit_split)
 remit_test <- testing(x = remit_split)
 ```
 
-## STEP 9: Cross-validation set up
+------------------------------------------------------------------------
+
+# 
+
+# STEP 3: Model Development
+
+## 3.1 Cross-validation set up
+
+To improve the accuracy of our estimated error rates, we set up a 10-fold cross validation with 5 repetitions since we have a relatively small number of observations within the training data. We create a recipe for the baseline model and process the full training data using parameter specification.
+
 ```{r}
-## To improve the accuracy of our estimated error rates, we set up a 10-fold cross validation with 5 repetitions since we have a relatively small number of observations within the training data
 remit_folds <- vfold_cv(data = remit_train, v = 10, repeats = 5)
 ```
+
+## 3.2 Baseline Recipe
 
 ```{r}
 ## Recipe (baseline model)
 recipe_baseline <- 
-  recipe(remittances_gdp ~ stock + gdp_per + unemployment + dist_cap + terror + deportations + internet + inflation,
+  recipe(remittances_gdp ~ stock + gdp_per + gdp_lag + unemployment + 
+         dist_cap + terror + deportations + deportations_lag + 
+         internet + inflation,
   data = remit_train) |>
 step_impute_median(all_numeric_predictors()) |>
-step_impute_mode(all_nominal_predictors())|>
-step_mutate(
-  gdp_lag = lag(gdp_per), 
-  unemp_lag = lag(unemployment)) |>
-step_mutate(
-    gdp_per = log(gdp_per + 1)) |>
+step_impute_mode(all_nominal_predictors()) |>
+step_mutate(gdp_per = log(gdp_per + 1)) |>
 step_normalize(all_numeric_predictors())
 
 ## Processing the full training data using parameter specification. 
@@ -67,13 +100,11 @@ bake(prep(recipe_baseline, training = remit_train), new_data = remit_train)
 
 ------------------------------------------------------------------------
 
-## STEP 10: Model Comparison and Evaluation
+# STEP 4: Model Comparison and Selection
 
 In this section, we compare five different regression models to predict remittances as a percentage of GDP.
 
-------------------------------------------------------------------------
-
-## 10.1 OLS Baseline Model
+## 4.1 OLS Baseline Model
 
 ```{r}
 ## Linear model
@@ -94,17 +125,15 @@ lm_results <- lm_workflow |>
 collect_metrics(lm_results)
 ```
 
-Establishes a baseline performance using ordinary least squares regression with no regularization. This gives us a benchmark to compare other models against.
+The linear model establishes a baseline performance using ordinary least squares regression with no regularization. This gives us a benchmark to compare other models against.
+
+The model
 
 ------------------------------------------------------------------------
 
-## 10.2 Prepare Enhanced Recipe for Regularized Models
+## 4.2 Prepare Enhanced Recipe for Regularized Models
 
 ```{r}
-library(tidymodels)
-library(glmnet)
-library(dplyr)
-
 #We clean remittances before folding due to missing values
 train_data2 <- remit_train %>%
   filter(!is.na(remittances_gdp))   
@@ -132,9 +161,9 @@ metrics1 <- metric_set(rmse)
 
 ------------------------------------------------------------------------
 
-## 10.3 RIDGE Regression
+## 4.3 RIDGE Regression
 
-```{r}
+```{r message=FALSE, warning=FALSE}
 #this defines ridge regression with a tuned penalty.
 ridge_spec <- linear_reg(penalty = tune(), mixture = 0) %>%
   set_mode("regression") %>%
@@ -164,21 +193,21 @@ final_ridge_wf
 ridge_fit 
 ```
 
-### Comment:
+Comment:
 
--   penalty value with the lowest RMSE: best_ridge has a penalty \~ 0. The penalty disappears, with the model becomes almost identical to standard linear regression. The cross-validation procedure
--   shows that adding regularization does not improve predictive performance relative to an unpenalized linear model.
--   ridge_fit shows that ridge ≈ OLS Coefficients will be very similar to baseline linear model
+-   Penalty value with the lowest RMSE: best_ridge has a penalty \~ 0. The penalty disappears, with the model becomes almost identical to standard linear regression. The cross-validation procedure
+-   Shows that adding regularization does not improve predictive performance relative to an unpenalized linear model.
+-   Ridge_fit shows that ridge ≈ OLS Coefficients will be very similar to baseline linear model
 
-### Conclusion:
+Conclusion:
 
 The ridge regression regularization indicated increasing deviance as the penalty decreased, with cross-validation selecting a penalty effectively equal to zero. This suggests that the unpenalized linear model already provides an optimal fit for the data.
 
 ------------------------------------------------------------------------
 
-## 10.4 LASSO Regression
+## 4.4 LASSO Regression
 
-```{r}
+```{r message=FALSE, warning=FALSE}
 # we specify the LASSO model
 lasso_spec <- linear_reg(penalty = tune(), mixture = 1) %>%
   set_mode("regression") %>%
@@ -215,7 +244,7 @@ tidy(lasso_fit) %>%
   arrange(desc(abs(estimate)))
 ```
 
-### Calculating the RMSE
+Calculating the RMSE
 
 ```{r}
 # RMSE comparison
@@ -232,27 +261,26 @@ bind_rows(
   select(model, penalty, mean, std_err)
 ```
 
-### Comment
+Comment
 
 Cross-validation selected a non-zero penalty for the LASSO model, indicating that it improves predictive performance. The LASSO regularization path shows a small set of predictors entering the model as the penalty decreases, highlighting its role as a variable selection method.
 
-### Comment on selected predictors
+Comment on selected predictors
 
 The LASSO model selected a set of nine predictors. Remittance intensity is negatively associated with GDP per capita and macroeconomic instability, while unemployment, deportations, and internet access exhibit positive relationships, consistent with counter-cyclical and transaction-cost mechanisms.
 
-### Why LASSO is useful
+Why LASSO is useful:
 
 -   The dataset benefits from variable selection (LASSO), not from coefficient stabilization (RIDGE).
 
 ------------------------------------------------------------------------
 
-## 10.5 Random Forest
+## 4.5 Random Forest
 
-We use this model a regularizaiton model, to reduce variance error by reducing the important of less important predictors. It is a bagging algorithm which considers each split and divides it into only useful predictors - It uses two hyper paramaters `mtry` which considers x predictors in each split (it can be tuned to optimal value of useful predictors. and `min_n` to stop spliting the data
+We use this model a regularization model, to reduce variance error by reducing the important of less important predictors. It is a bagging algorithm which considers each split and divides it into only useful predictors - It uses two hyper paramaters `mtry` which considers x predictors in each split (it can be tuned to optimal value of useful predictors. and `min_n` to stop spliting the data
 
-```{r}
-library(vip)
-# For missingness inside the dependent variable 
+```{r message=FALSE, warning=FALSE}
+# For missing values inside the dependent variable 
 remit_train_clean <- remit_train |>
   filter(!is.na(remittances_gdp))
 
@@ -261,14 +289,14 @@ rf_folds <- vfold_cv(remit_train_clean, v = 5)
 
 ## Given the high degree of missingness a recipe that accounts for nas will avoid it from breaking down using median imputation. 
 recipe_alt <- 
-  recipe(remittances_gdp ~ stock + gdp_per + unemployment + dist_cap + terror + deportations + internet + inflation + `Country Name`,
+  recipe(remittances_gdp ~ stock + gdp_per + gdp_lag + unemployment + 
+         dist_cap + terror + deportations + deportations_lag + 
+         internet + inflation + country_name,
   data = remit_train_clean) |>
-update_role(`Country Name`, new_role = "id") |>
+update_role(country_name, new_role = "id") |>
 step_impute_median(all_numeric_predictors()) |>
-step_lag(gdp_per, unemployment, lag = 1) |>
-step_mutate(
-    gdp_per = log(gdp_per + 1)) |>
-step_normalize(all_numeric_predictors()) 
+step_mutate(gdp_per = log(gdp_per + 1)) |>
+step_normalize(all_numeric_predictors())
 
 bake(prep(recipe_alt, training = remit_train_clean), new_data = remit_train_clean)
 
@@ -333,15 +361,15 @@ final_rf_fit |>
 
 ------------------------------------------------------------------------
 
-## 10.6 K-Nearest Neighbors (KNN)
+## 4.6 K-Nearest Neighbors (KNN)
 
 KNN predicts remittances by averaging the values of the K most similar country-year observations.
 
 ```{r}
 ## Create lagged variables by country
 remit_train_lagged <- remit_train |>
-  arrange(`Country Name`, year) |>
-  group_by(`Country Name`) |>
+  arrange(country_name, year) |>
+  group_by(country_name) |>
   mutate(
     gdp_lag = lag(gdp_per),
     deportations_lag = lag(deportations)
@@ -400,7 +428,7 @@ final_knn_wf <- knn_workflow |> finalize_workflow(best_k)
 
 ------------------------------------------------------------------------
 
-## 10.7 Which Model is the best?
+## 4.7 Which Model is the best?
 
 ```{r}
 ## Compare all models
@@ -417,7 +445,7 @@ tibble(
   arrange(Error)
 ```
 
-## Dot plot
+Dot plot
 
 ```{r}
 tibble(
@@ -436,42 +464,120 @@ tibble(
   labs(title = "Model Performance", 
        subtitle = "Left is better",
        x = "Prediction Error", 
-       y = NULL) +
+       y = NULL,
+      caption = "Source: World Bank Development Indicators (1994-2024)") +
   theme_minimal()
 ```
 
-## 10.8 Test the Best Model on New Data
+# STEP 5: Final Model Evaluation
 
-The best model is **Random Forest** (lowest error: 3.06). Now we test it on completely new data.
+The best model is **KNN** (lowest error: 3.05). Now we test it on completely new data.
+
+## 5.1 Test the Best Model on New Data
 
 ```{r}
-## Create new split for Random Forest (uses clean data)
-set.seed(20251211)
-rf_split <- initial_split(remit_train_clean, prop = 0.8)
-
-## Test Random Forest
-test_results <- final_rf_wf |> last_fit(rf_split)
-
-## Show results
-test_results |> collect_metrics()
+## Prepare test data
+remit_test_clean_knn <- remit_test |>
+  select(
+    country_name, year,
+    remittances_gdp, stock, gdp_per, unemployment, dist_cap,
+    terror, deportations, internet, inflation, gdp_lag, deportations_lag
+  ) |>
+  drop_na()
 ```
 
-On average, predictions are off by 2.53 percentage points. The model explains 86% of the variation in remittances
+```{r}
+## Finalize & fit KNN on all training data
+best_k <- select_best(knn_results, metric = "rmse")
+final_knn_wf <- finalize_workflow(knn_workflow, best_k)
+
+final_knn_fit <- final_knn_wf |>
+  fit(data = remit_train_clean_knn)
+```
 
 ```{r}
-## Visualize: Actual vs Predicted
-test_results |>
-  collect_predictions() |>
+## Predict on test 
+test_predictions <- final_knn_fit |>
+  augment(new_data = remit_test_clean_knn)
+```
+
+## 5.2 Country-Specific Performance & Residual Analysis
+
+```{r}
+## Look at countries of interest
+countries_of_interest <- c(
+  "Nicaragua", "El Salvador", "Honduras",
+  "Guatemala", "Haiti", "India", "Mexico"
+)
+```
+
+```{r}
+## Calculate RMSE by country
+rmse_tbl <- test_predictions |>
+  filter(country_name %in% countries_of_interest) |>
+  group_by(country_name) |>
+  summarise(
+    RMSE = rmse_vec(truth = remittances_gdp, estimate = .pred),
+    MAE  = mae_vec(truth = remittances_gdp, estimate = .pred),
+    R2   = rsq_vec(truth = remittances_gdp, estimate = .pred),
+    Avg_Remittances_GDP = mean(remittances_gdp, na.rm = TRUE),
+    n = n(),
+    .groups = "drop"
+  ) |>
+  arrange(RMSE)
+
+avg_perf_interest <- test_predictions |>
+  filter(country_name %in% countries_of_interest) |>
+  summarise(
+    RMSE = rmse_vec(truth = remittances_gdp, estimate = .pred),
+    MAE  = mae_vec(truth = remittances_gdp, estimate = .pred),
+    R2   = rsq_vec(truth = remittances_gdp, estimate = .pred),
+    n = n()
+  )
+
+rmse_tbl
+avg_perf_interest
+```
+
+```{r}
+## Visualize actual vs. predicted
+test_predictions |>
+  filter(country_name %in% countries_of_interest) |>
   ggplot(aes(x = remittances_gdp, y = .pred)) +
-  geom_point(alpha = 0.5, color = "steelblue") +
-  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "red") +
+  geom_point(alpha = 0.6) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
+  facet_wrap(~ country_name) +
   labs(
-    title = "Random Forest: Test Set Performance",
-    subtitle = "Points near line = good predictions",
+    title = "KNN: Test Set Performance by Country",
+    subtitle = "Points near the diagonal = better predictions",
     x = "Actual Remittances (% GDP)",
-    y = "Predicted"
-  ) +
+    y = "Predicted",
+    caption = "Source: World Bank Development Indicators (1994-2024)") +
   theme_minimal()
 ```
 
-Random Forest performs **much better** than the other models!
+## 5.3 Key Insights and Policy Implications
+
+**Insights** - Strong performance for large, diversified economies: Mexico and India show very low prediction error (RMSE \< 0.5) and very high explanatory power (R² ≈ 1). The model performs best where remittances respond predictably to macroeconomic fundamentals and migration stocks. - Moderate accuracy for mid-dependence countries: Haiti and Nicaragua exhibit moderate RMSE (≈ 1.6–2.6) and reasonably strong fit. - Weak performance for highly remittance-dependent economies - Guatemala, El Salvador, and Honduras have the highest RMSE values (≈ 5–7) and low R², despite being central to U.S.–migration and deportation policy discussions. - These countries rely heavily on remittances (≈ 15–20% of GDP), making flows more sensitive to household-level shocks not captured by the model.
+
+```{r}
+## Plot residuals
+residuals_df <- test_predictions |>
+  filter(country_name %in% countries_of_interest) |>
+  mutate(residual = .pred - remittances_gdp)
+
+ggplot(residuals_df, aes(x = year, y = residual)) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(alpha = 0.4, se = FALSE) +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  facet_wrap(~ country_name, scales = "free_y") +
+  labs(
+    title = "KNN Residuals Over Time by Country",
+    subtitle = "Positive values = overprediction; negative = underprediction",
+    x = "Year",
+    y = "Residual (Predicted − Actual)",
+    caption = "Source: World Bank Development Indicators (1994-2024)") +
+  theme_minimal()
+```
+
+**Interpretation: Residuals Over Time by Country** - Large, diversified economies (Mexico, India) - Residuals are tightly centered around zero with very small magnitudes. - No clear time trend or structural bias is evident. - This reinforces that the KNN model captures remittance dynamics well when flows scale predictably with macroeconomic and migration variables. - Highly remittance-dependent Central American countries show systematic error - El Salvador and Honduras exhibit large, persistent negative residuals in later years, indicating systematic underprediction. - These patterns suggest the model fails to capture structural increases in remittance dependence over time.
