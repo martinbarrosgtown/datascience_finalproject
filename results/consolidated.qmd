@@ -30,7 +30,7 @@ options(scipen = 999)
 
 ## Load the Data
 
-Filler out Missing Values in our key predicted outcome as this will cause our predicted models to fail, it provides no addtiaional data to our model. However for missingness in our predictors, imputation will help ensure non-systemic missingness adversely effects the sample size of our model.
+Filler out Missing Values in our key predicted outcome as this will cause our predicted models to fail, it provides no additional data to our model. However, for missingness in our predictors, imputation will help ensure non-systemic missingness adversely affect the sample size of our model.
 
 ```{r message=FALSE, warning=FALSE}
 ## Read in the CSV file
