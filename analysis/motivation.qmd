@@ -1,0 +1,58 @@
+---
+title: "Intro to Data Science Final Project"
+author: "Cova, Langbehn, Villa & Barros" 
+format: 
+  html:
+    toc: true
+    toc-depth: 3
+    code-fold: true
+    embed-resources: true
+    theme: cosmo
+editor: visual
+---
+
+# Motivating the Problem
+
+------------------------------------------------------------------------
+
+### Predicting remittance flows in Latin American countries based on migration shocks in the United States
+
+------------------------------------------------------------------------
+
+**Background:**
+
+While most of the global impact of the Trump presidency has been centered on the demise of USAID and its potentially negative externalities for developing countries, there has been less coverage of the general equilibrium effects of its migration policies.
+
+According to the United States Department of Homeland Security (DHS), the Trump Administration is on pace to deport nearly 600,000 illegal aliens by the end of President Donald Trump’s first year in office. So far, more than 2 million people have left the U.S: 1.6 million of those have voluntarily self-deported, and over 527,000 have been deported (DHS, 2025).
+
+Trump’s migration policy has caused different shocks. The first one is demographic: An analysis of census data by the Pew Research Center found that between January and June, the foreign-born population in the US declined by nearly 1.5 million (New York Times, 2025). The second one is economic: the anti-immigration actions of the Trump administration are set to have a significant effect on the economic development of the world's developing countries (NPR, 2025), considering that the United States of America has consistently been the top remittance-sending country in the world, with a total outflow of USD 79.15 billion in 2022 (IOM, 2023).
+
+Remittances are the largest source of external finance for low- and middle-income countries; as of 2024, they outstripped aid by three times (Devex, 2024). Thus, Trump’s migration shock could have vast macroeconomic effects in a wide set of countries, particularly those exposed through forgone remittances. For countries like Honduras, Nicaragua, El Salvador, and Guatemala, remittances comprise considerable parts of their economies, ranging from around 20% to 27% of each country's GDP (NPR, 2025)
+
+Remittances have positive macroeconomic effects. At the macroeconomic level, they exhibit a countercyclical impact, reducing growth volatility and helping countries adjust to policy shocks. At the microeconomic level, they enable poor households to improve their children’s health and educational outcomes, increase their savings, and allocate more resources to consumer durables and human capital (Malpass, 2022).
+
+At the same time, remittances may generate counterintuitive effects: they have the potential to reduce the government’s incentive to maintain fiscal policy discipline. The empirical evidence suggests that governments utilize the fiscal space afforded by remittances by increasing their consumption and borrowing. Moreover, they are positively correlated with real exchange rate appreciation, showing evidence of Dutch disease effects in remittance-receiving countries. Additionally, they pose a moral hazard problem by reducing the political will to enact policy reform. Compensatory remittances that insure the public against adverse economic shocks and insulate them from government policy reduce households’ incentives to pressure the government to implement reforms to facilitate economic growth (IMF, 2008).
+
+**Applicability for policymakers:**
+
+Considering the general equilibrium effects of remittances on developing countries, the objective of the present research project is to provide novel forecasting data for developing countries to estimate shocks to remittances from nationals abroad amid a policy of increased self and enforced deportations in the United States. Furthermore, a reduction in net migration inflows to near-zero levels in the United States presents a potential future constraint on remittance activity. Countries face a double-binding constraint to their remittance receipt prospects: less migration out of the country and greater return of nationals abroad. Both forces contribute to a reduced external migrant stock capable of using their expanded acquisition power to ameliorate microeconomic family shocks back home. The value of the model lies in taking both the publicly available and other estimates of deportation to produce a wide array of potential predicted scenarios.
+
+Recognizing the uncertainty surrounding the integrity of data on deportations and self-removals, our objective is to provide policymakers with a model that: enables policymakers to estimate how the magnitude of a shock to the migrant stock affects remittances expected to be received back home. estimates different scenarios of deportations, self-removals, net migration inflows hit zero, changes in migrant participation in the labor force
+
+**References**
+
+<https://www.dhs.gov/news/2025/10/27/dhs-removes-more-half-million-illegal-aliens-us>
+
+<https://worldmigrationreport.iom.int/what-we-do/world-migration-report-2024-chapter-2/international-remittances>
+
+<https://www.devex.com/news/remittances-outstrip-aid-3-times-over-can-they-transform-development-107952>
+
+<https://www.nytimes.com/2025/08/21/us/immigration-decline-united-states-trump.html>
+
+<https://www.npr.org/sections/planet-money/2025/10/28/g-s1-94960/americas-immigration-crackdown-is-disrupting-the-global-remittance-market>
+
+<https://blogs.worldbank.org/en/voices/remittances-are-critical-economic-stabilizer>
+
+<https://www.imf.org/external/pubs/ft/op/259/op259.pdf>
+
+<https://openknowledge.worldbank.org/server/api/core/bitstreams/07db5244-2c4b-5926-929a-93d02b9f8a0c/content>

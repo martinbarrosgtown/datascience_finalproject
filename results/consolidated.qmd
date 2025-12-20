@@ -1127,7 +1127,7 @@ metrics1 <- metric_set(rmse)
 
 ## 10.3 RIDGE Regression
 
-```{r}
+```{r message=FALSE, warning=FALSE}
 #this defines ridge regression with a tuned penalty.
 ridge_spec <- linear_reg(penalty = tune(), mixture = 0) %>%
   set_mode("regression") %>%
@@ -1171,7 +1171,7 @@ The ridge regression regularization indicated increasing deviance as the penalty
 
 ## 10.4 LASSO Regression
 
-```{r}
+```{r message=FALSE, warning=FALSE}
 # we specify the LASSO model
 lasso_spec <- linear_reg(penalty = tune(), mixture = 1) %>%
   set_mode("regression") %>%
@@ -1243,7 +1243,7 @@ The LASSO model selected a set of nine predictors. Remittance intensity is negat
 
 We use this model a regularizaiton model, to reduce variance error by reducing the important of less important predictors. It is a bagging algorithm which considers each split and divides it into only useful predictors - It uses two hyper paramaters `mtry` which considers x predictors in each split (it can be tuned to optimal value of useful predictors. and `min_n` to stop spliting the data
 
-```{r}
+```{r message=FALSE, warning=FALSE}
 library(vip)
 # For missingness inside the dependent variable 
 remit_train_clean <- remit_train |>
@@ -1437,7 +1437,7 @@ tibble(
 
 The best model is **Random Forest** (lowest error: 3.06). Now we test it on completely new data.
 
-```{r}
+```{r message=FALSE, warning=FALSE}
 ## Create new split for Random Forest (uses clean data)
 set.seed(20251211)
 rf_split <- initial_split(remit_train_clean, prop = 0.8)
@@ -1468,3 +1468,72 @@ test_results |>
 ```
 
 Random Forest performs **much better** than the other models!
+
+# Further Evaluation
+
+Earlier in the modeling process we explored 6 countries of interest, that represent either increasingly important remittance receiving countries, who would most be impact be changes in US migration policy (deportations, overall changes in migrant stock, etc) or who have throughout the duration of our model been important players.
+
+We want to now apply to these 6 (plus mexico) to see, on average, how well our model responds to the predictors in particular for countries in Latin America (and India) who have widely been cited as central components of contemporary migration/ foreign development conversations.
+
+```{r message=FALSE, warning=FALSE}
+# Collect predictions from last_fit or resamples
+country_preds <- test_results |>
+  collect_predictions() |>
+  left_join(remit_train |>
+              mutate(row_id = row_number()) |>
+              select(row_id, country_name, year), 
+            by = c(".row" = "row_id"))
+
+# Respecifying our 5 countries of interest and their predictions
+countries_of_interest <- c("Nicaragua", "El Salvador", "Honduras", 
+                           "Guatemala", "Haiti", "India", "Mexico")
+
+rmse_tbl <- country_preds |>
+  filter(country_name %in% countries_of_interest) |>
+  group_by(country_name) |>
+  summarise( 
+    Error = rmse_vec(truth = remittances_gdp, estimate = .pred), 
+    Avg_Remittances_GDP = mean(remittances_gdp, na.rm = TRUE),
+      .groups = "drop" ) |> 
+  arrange(Error)
+
+rmse_tbl
+
+```
+
+Key Insights
+
+-   Mexico and India, while the two largest (total) remittance receivers, have lower gdp impacts, and lower error rates (\<1 RMSE).
+    -   Model performs quite well for **large, less-reliant economies.**
+-   Guatemala and El Salvador in particular are quite dependent on remittances sent from the US (10-20% of GDP).
+    -   Despite this and their particular relevance in deportation/ migration spaces the model would not perform as great.
+    -   **Less accurate predictions of more remittance-intense countries**.
+-   **Countries most reliant on remittances (relative) generate lesser accurate predictions that larger (high remittance) yet less dependant nations.**
+    -   While our key predictors (gdp, distance to us, deportations, migrant stocks, etc) were great for predicting variance for the latter countries the former will likely need other predictors that may help predict their remittance flow.
+
+```{r message=FALSE, warning=FALSE}
+# Compute residuals (Predicted - Actual) 
+residuals_df <- country_preds %>% filter(country_name %in% countries_of_interest) %>% 
+  mutate(residual = .pred - remittances_gdp) 
+
+# Plot residuals over time 
+ggplot(residuals_df, aes(x = year, y = residual)) + 
+  geom_point(alpha = 0.6, color = "steelblue") + 
+  geom_smooth(alpha = 0.4, color = "steelblue") + 
+  geom_hline(yintercept = 0, linetype = "dashed", color = "red") + 
+  facet_wrap(~country_name, scales = "free_y") + 
+  labs(title = "Residuals Over Time by Country", 
+       x = "Year", 
+       y = "Residual (Predicted - Actual)") + 
+  theme_minimal()
+```
+
+### **Last Takeaways from our model** 
+
+-   Some countries show **consistent bias** (underprediction in more reliant/ more accurate predictions in relatively less reliant countries on remittances).
+
+-   Volatility spikes around 2008 and 2020 suggest the model struggles during economic shocks.
+
+-   **India and Mexico** show stable residuals, reinforcing their reliability and increasing our ability to make policy recommendations in these context.
+
+-   **Overall, the model's interpretability would be advised with caution to policymakers in the most-reliant on remittances countries, but may provide use to larger countries (India/ Mexico).**

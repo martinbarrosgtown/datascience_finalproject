@@ -8,17 +8,17 @@ This project analyzes the determinants of international remittances as a percent
 
 ## Project File Directory
 
-- [Motivating the Problem](https://github.com/martinbarrosgtown/datascience_finalproject/blob/main/analysis/motivation.html)
+-   [Motivating the Problem](https://github.com/martinbarrosgtown/datascience_finalproject/blob/main/analysis/motivation.html)
 
-- [Proposing the Solution](https://github.com/martinbarrosgtown/datascience_finalproject/blob/main/analysis/proposal.html)
+-   [Proposing the Solution](https://github.com/martinbarrosgtown/datascience_finalproject/blob/main/analysis/proposal.html)
 
-- [Data Set Construction](https://github.com/martinbarrosgtown/datascience_finalproject/blob/main/data/dataset_construction.html)
+-   [Data Set Construction](https://github.com/martinbarrosgtown/datascience_finalproject/blob/main/data/dataset_construction.html)
 
-- [Data Visualization and Initial Model Set Up](https://github.com/martinbarrosgtown/datascience_finalproject/blob/main/analysis/dataviz.html)
+-   [Data Visualization and Initial Model Set Up](https://github.com/martinbarrosgtown/datascience_finalproject/blob/main/analysis/dataviz.html)
 
-- [Model Construction and Implementation](https://github.com/martinbarrosgtown/datascience_finalproject/blob/main/analysis/model.html)
+-   [Model Construction and Implementation](https://github.com/martinbarrosgtown/datascience_finalproject/blob/main/analysis/model.html)
 
--  Model Evaluation
+-   Model Evaluation
 
 ## Research Question
 
@@ -26,25 +26,34 @@ What factors best predict remittances as a share of GDP, and how do these relati
 
 ## Relevant Repository Contents
 
--   UPDATEFILENAME.qmd - Main project Quarto file with detailed overview of process and justification
--   UPDATEFILENAME.html - Rendered output of the Quarto
--   UPDATEFILENAME.csv - Main dataset that we built
--   ?
--   ?
+-   consolidated.qmd - Main project Quarto file with detailed overview of process and justification
+    -   **Found in Results Folder**
+-   consolidated.html - Rendered output of the Quarto
+    -   **Found in Results Folder**
+-   remittances.csv - Main dataset that we built
+    -   **Found in Data Folder**
 
 ## Libraries Used for this project
 
 -   tidyverse
 -   tidymodels
+<<<<<<< HEAD
+=======
+-   ggplot2
+>>>>>>> 84d13ec (final reviews for feedback)
 -   janitor
 -   naniar
 -   assertr
 -   corrplot
+<<<<<<< HEAD
 -   gridExtra
 -   glmnet
 -   dplyr
 -   vip
 -   reshape2
+=======
+-   ...
+>>>>>>> 84d13ec (final reviews for feedback)
 
 ## Data
 

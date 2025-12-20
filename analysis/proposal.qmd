@@ -1,0 +1,36 @@
+---
+title: "Intro to Data Science Final Project"
+author: "Cova, Langbehn, Villa & Barros" 
+format: 
+  html:
+    toc: true
+    toc-depth: 3
+    code-fold: true
+    embed-resources: true
+    theme: cosmo
+editor: visual
+---
+
+# Proposing a Solution
+
+------------------------------------------------------------------------
+
+### **Proposed Intervention:**
+
+Using (lagged/unlagged) historical net inflow/outflow migration data and (lagged/ unlagged) indicator variables from Latin American countries (1970-2024) to predict changes in remittance rates in the subsequent year. For his, we intend to create a historical panel data set using the origin of migrant stock in a destination country (USA), income levels of individuals in the origin country, and income levels of the host country, and other indicators (Mohapatra & Ratha, 2010). Potentially including deportation and inflow migration data. Accessing World Bank Data (WDI) using APIs for the main remittance, gdp, and other indicator data. Deportation data from DHS yearbook of statistics (DHS). Using an API to access data on migrant origin from the American Community Survey (ACS). Controls:
+
+Apply a supervised machine learning model to predict remittance rates from lagged migration data and income data. Use both current and hypothetical 2025 migration flow data to estimate remittance changes in the figures. Geospatial analysis of countries with greatest remittance flow changes. Explore how these forecasts relate to poverty and gdp metrics in countries of origin.
+
+------------------------------------------------------------------------
+
+### **Dataset construction:** 
+
+We build a country–year dataset for 1994–2024 that combines migration capacity, origin-country economic conditions, political risk, and frictions that affect the cost and feasibility of sending money home, so the model can predict remittances as a share of GDP in a way that is both empirically useful and economically interpretable. 
+
+Migrant stock anchors the core “sending base” (more migrants abroad generally implies more potential remitters), while GDP per capita, unemployment, and vulnerable employment capture labor-market stress and income constraints that can make remittances countercyclical or increase reliance on external support. 
+
+We incorporate deportation data because enforcement shocks can alter household risk and income smoothing needs, and can shift migrant behavior and transfer patterns. Maternal mortality and poverty proxy deeper structural deprivation and social vulnerability that often correlate with remittance dependence, while inflation, the official exchange rate, represent macroeconomic instability and purchasing-power dynamics that can change both the need for remittances and the real value received. Political terror/conflict reflects insecurity that can trigger migration, disrupt local earnings, and increase precautionary transfers. 
+
+Physical distance captures geographic frictions that shape migration networks and remitting channels, and internet use proxies financial/communication infrastructure that lowers transaction costs and enables more frequent or formal remitting. 
+
+Taken together, these variables operationalize the main channels that theory and prior evidence suggest drive remittance intensity -i.e.: migrant capacity, economic need, risk/instability, and transfer frictions- over a long panel window that includes major global shocks, improving both prediction and plausibility of the relationships the model learns.
