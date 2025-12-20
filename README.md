@@ -53,7 +53,7 @@ What factors best predict remittances as a share of GDP, and how do these relati
 Data was pulled from the World Bank Development Indicators to build this dataset, accessed here: https://databank.worldbank.org/source/world-development-indicators 
 
 Countries covered: 150 
-Time period: 1994-2024 (30 years) Number of observations: 3,918 (in training dataset)
+Time period: 1994-2024 (30 years) Number of observations: 3,292 (in training dataset)
 
 Key outcome: Remittances as a % of GDP Predictors used: Migrant stock, GDP per capita, unemployment, deportations, internet accss, inflation, terrorism index, distance between capital cities, poverty rate
 
