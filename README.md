@@ -8,7 +8,6 @@ This project analyzes the determinants of international remittances as a percent
 
 ## Project File Directory
 
-
 -   [Motivating the Problem](https://martinbarrosgtown.github.io/datascience_finalproject.github.io/analysis/motivation.html)
 
 -   [Proposing the Solution](https://martinbarrosgtown.github.io/datascience_finalproject.github.io/analysis/proposal.html)
@@ -19,6 +18,7 @@ This project analyzes the determinants of international remittances as a percent
 
 -   [Model Construction/ Implementation/ Evaluation](https://martinbarrosgtown.github.io/datascience_finalproject.github.io/analysis/model.html)
 
+-   [Summary of Relevant Code]
 
 ## Research Question
 
@@ -112,7 +112,6 @@ There are some issues with missing data, especially for Poverty and Migrant stoc
 2.  X, Y, and Z were the strongest predictors
 3.  Remittances represent a larger share of GDP in lower-income countries, displaying a negative correlation with GDP per capita
 4.  Utilizing lagged effects for GDP and deportations improves model performance, suggesting there is a delayed impact of these variables on remittance flows
-
 
 ## How to Reproduce This Analysis
 
