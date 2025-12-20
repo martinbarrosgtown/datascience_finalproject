@@ -16,9 +16,9 @@ This project analyzes the determinants of international remittances as a percent
 
 - [Data Visualization and Initial Model Set Up](https://github.com/martinbarrosgtown/datascience_finalproject/blob/main/analysis/dataviz.html)
 
-- check -   Model Construction and Implementation
+- [Model Construction and Implementation](https://github.com/martinbarrosgtown/datascience_finalproject/blob/main/analysis/model.html)
 
-- -   Model Evaluation
+-  Model Evaluation
 
 ## Research Question
 
