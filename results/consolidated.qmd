@@ -34,7 +34,7 @@ Filler out Missing Values in our key predicted outcome as this will cause our pr
 
 ```{r message=FALSE, warning=FALSE}
 remittances <- read_csv("remittances.csv") |>
-  clean_names() |>  # ← Add this line to clean column names FIRST
+  clean_names() |>  
   filter(!is.na(remittances_gdp)) |>
   arrange(country_name, year) |> 
   group_by(country_name) |>
