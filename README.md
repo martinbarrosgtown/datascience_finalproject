@@ -36,9 +36,15 @@ What factors best predict remittances as a share of GDP, and how do these relati
 
 -   tidyverse
 -   tidymodels
--   ggplot2
--   ?
--   ?
+-   janitor
+-   naniar
+-   assertr
+-   corrplot
+-   gridExtra
+-   glmnet
+-   dplyr
+-   vip
+-   reshape2
 
 ## Data
 
@@ -52,7 +58,7 @@ There are some issues with missing data, especially for Poverty and Migrant stoc
 
 ## Methods and Process
 
-## Step 1: Data Preparation
+## Step 1: Data Overview Preparation
 
 -   Loaded remittances data
 -   Removed missing observations
@@ -99,20 +105,21 @@ There are some issues with missing data, especially for Poverty and Migrant stoc
 
 ## Key Findings
 
-1.  The Random Forest model achieved the lowest prediction error (RMSE = XXX) and explains X% of variation in remittances
+1.  The Random Forest model achieved the lowest prediction error (RMSE = 2.53) and explains 86% of variation in remittances
 2.  X, Y, and Z were the strongest predictors
 3.  Remittances represent a larger share of GDP in lower-income countries, displaying a negative correlation with GDP per capita
 4.  Utilizing lagged effects for GDP and deportations improves model performance, suggesting there is a delayed impact of these variables on remittance flows
+
 
 ## How to Reproduce This Analysis
 
 1.  Clone this repository to RStudio
 2.  Ensure data file (remittances.csv) is in the project directory
-3.  Open \*INSERT FINAL FILE NAME)
+3.  Open consolidated.qmd
 4.  Render to generate HTML output
 
 ## Notes
 
--   ⁠Seed set to XXXX for reproducibility
+-   ⁠Seed set to 20251211 for reproducibility
 -   ⁠Repository URL submitted via Canvas
 -   Private repository
