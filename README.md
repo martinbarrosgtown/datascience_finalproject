@@ -37,23 +37,17 @@ What factors best predict remittances as a share of GDP, and how do these relati
 
 -   tidyverse
 -   tidymodels
-<<<<<<< HEAD
-=======
 -   ggplot2
->>>>>>> 84d13ec (final reviews for feedback)
 -   janitor
 -   naniar
 -   assertr
 -   corrplot
-<<<<<<< HEAD
 -   gridExtra
 -   glmnet
 -   dplyr
 -   vip
 -   reshape2
-=======
 -   ...
->>>>>>> 84d13ec (final reviews for feedback)
 
 ## Data
 
